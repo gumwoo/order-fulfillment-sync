@@ -26,8 +26,15 @@ admin-api ───┘
 - 실행 모듈(inbound-api, worker, reconciler, admin-api)끼리는 서로 참조하지 않는다.
 - 외부 호출(샵바이, 3PL, SQS, Redis)은 `core`의 포트를 통해서만 한다. 구현은 `infra`.
 - 샵바이 호출은 반드시 전역 레이트 리미터를 거친다 (`ShopbyClient` 하나로만 나간다).
+  - `core.port.ShopbyClient`의 구현체는 `infra.shopby`에만 둔다. `infra.shopby`의 다른 클래스는 패키지 밖에서 쓰지 않는다.
+  - HTTP 클라이언트(RestClient, WebClient, `java.net.http`, `HttpURLConnection` 등)는 `infra.shopby`, `infra.tpl`(3PL), `mock`에서만 쓴다.
+- 각 모듈의 클래스는 자기 패키지 아래에 둔다. 루트는 `io.github.gumwoo.fulfillment`이고,
+  모듈별 패키지는 `core`, `infra`, `inbound`(inbound-api), `worker`, `reconciler`, `admin`(admin-api), `mock`(mock-servers)이다.
 
 이 규칙은 ArchUnit 테스트(`core/src/test/.../ArchitectureTest`)로 검사하고, 실패 메시지에 고치는 방법을 적는다.
+규칙이 실제로 위반을 잡는지는 일부러 규칙을 어긴 픽스처(`archfixture`)로 `ArchitectureRulesViolationTest`가 검사한다.
+
+정적 검사로 막지 못하는 것: `infra.tpl` 같은 허용 패키지 안에서 샵바이 URL을 직접 호출하는 경우. 코드 리뷰로 확인한다.
 
 ## 데이터 흐름
 

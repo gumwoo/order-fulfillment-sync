@@ -1,0 +1,9 @@
+rootProject.name = 'order-fulfillment-sync'
+
+include 'core'
+include 'infra'
+include 'inbound-api'
+include 'worker'
+include 'reconciler'
+include 'admin-api'
+include 'mock-servers'

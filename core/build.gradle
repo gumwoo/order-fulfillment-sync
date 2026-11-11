@@ -1,0 +1,12 @@
+// core는 외부 프레임워크에 의존하지 않는다 (ARCHITECTURE.md, ArchitectureTest로 검사)
+dependencies {
+    // ArchitectureTest가 모든 모듈의 클래스를 함께 검사하기 위한 테스트 전용 의존
+    testImplementation project(':infra')
+    testImplementation project(':inbound-api')
+    testImplementation project(':worker')
+    testImplementation project(':reconciler')
+    testImplementation project(':admin-api')
+    testImplementation 'com.tngtech.archunit:archunit-junit5:1.5.1'
+    // 규칙 위반 픽스처(archfixture)를 컴파일하기 위한 의존
+    testImplementation 'org.springframework:spring-context'
+}

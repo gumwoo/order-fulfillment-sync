@@ -57,3 +57,12 @@ Stop 훅이 같은 이유로 계속 막으면 Claude Code는 연속 8회 차단 
 ## 변경 이력
 
 - 2026-11-11: 최초 작성
+- 2026-11-11: Stop 훅에 `test_failures.py` 추가.
+  - Windows의 Java 17에서 Gradle 콘솔 출력이 MS949라 한글 테스트명과 "고치는 방법" 안내가 깨져서 전달됐다.
+  - JVM 인코딩 옵션(file.encoding, sun.stdout.encoding)으로는 고쳐지지 않았다.
+  - 그래서 UTF-8인 JUnit XML 리포트에서 이번 실행분만 다시 읽어 출력한다.
+- 2026-11-11: ArchUnit 규칙마다 위반 픽스처 테스트(`ArchitectureRulesViolationTest`)를 둔다.
+  - "센서가 한 번도 안 걸리면 검사가 약한 건지 확인한다"는 규칙을 테스트로 고정한 것이다.
+- 2026-11-11: reviewer 에이전트 모델을 sonnet으로 지정.
+  - 체크리스트형 검토라 비용 대비 충분하다고 판단했다.
+  - 작성 모델과 다른 모델이 보게 되는 효과도 있다.
