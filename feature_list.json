@@ -11,6 +11,6 @@
   {"id": "F-10", "category": "cancel", "description": "피킹 이후 취소가 들어오면 이미출고 API가 호출되고 CS 회수 목록에 1건이 생긴다", "verify": "CancelAfterPickingScenarioTest", "passes": true},
   {"id": "F-11", "category": "invoice", "description": "송장 100건 일괄 반영 중 7건이 실패하면 그 7건만 다시 보낸다", "verify": "InvoicePartialFailureScenarioTest", "passes": true},
   {"id": "F-12", "category": "delay", "description": "출고 확정이 송장보다 먼저 오면 지연 큐로 갔다가 송장 도착 후 반영되고, 최대 횟수 초과 시 conflict와 묶음 알림 1건이 생긴다", "verify": "DelayedRequeueScenarioTest", "passes": true},
-  {"id": "F-13", "category": "admin", "description": "옵션명 매핑 실패가 미연동 목록에 사유 코드와 함께 보이고, 재처리를 두 번 눌러도 한 번만 처리되며 이력이 남는다", "verify": "AdminReprocessScenarioTest", "passes": false},
+  {"id": "F-13", "category": "admin", "description": "옵션명 매핑 실패가 미연동 목록에 사유 코드와 함께 보이고, 재처리를 두 번 눌러도 한 번만 처리되며 이력이 남는다", "verify": "AdminReprocessScenarioTest", "passes": true},
   {"id": "F-14", "category": "architecture", "description": "core가 Spring/JPA/AWS를 참조하지 않고, 실행 모듈끼리 참조하지 않으며, 샵바이 호출은 ShopbyClient로만 나간다", "verify": "ArchitectureTest", "passes": true}
 ]

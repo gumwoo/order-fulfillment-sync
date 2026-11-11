@@ -1,5 +1,6 @@
 package io.github.gumwoo.fulfillment.scenario.support;
 
+import io.github.gumwoo.fulfillment.admin.AdminApiApplication;
 import io.github.gumwoo.fulfillment.inbound.InboundApiApplication;
 import io.github.gumwoo.fulfillment.mock.MockServersApplication;
 import io.github.gumwoo.fulfillment.reconciler.ReconcilerApplication;
@@ -13,7 +14,8 @@ public enum App {
     /** 여러 인스턴스 흉내 (F-07) */
     WORKER_2(WorkerApplication.class, WorkerApplication.CONFIG_NAME),
     WORKER_3(WorkerApplication.class, WorkerApplication.CONFIG_NAME),
-    RECONCILER(ReconcilerApplication.class, ReconcilerApplication.CONFIG_NAME);
+    RECONCILER(ReconcilerApplication.class, ReconcilerApplication.CONFIG_NAME),
+    ADMIN(AdminApiApplication.class, AdminApiApplication.CONFIG_NAME);
 
     final Class<?> mainClass;
     final String configName;

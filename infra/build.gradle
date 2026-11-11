@@ -9,6 +9,11 @@ dependencies {
     // worker가 소비 루프 설정에 SqsClient 타입을 쓰므로 api로 노출한다
     api platform('software.amazon.awssdk:bom:2.57.13')
     api 'software.amazon.awssdk:sqs'
+    // QueryDSL: CS 어드민 목록의 동적 조건 조회 (Q 클래스는 infra 엔티티에서 생성)
+    api 'com.querydsl:querydsl-jpa:5.1.0:jakarta'
+    annotationProcessor 'com.querydsl:querydsl-apt:5.1.0:jakarta'
+    annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
+    annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
     runtimeOnly 'com.mysql:mysql-connector-j'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

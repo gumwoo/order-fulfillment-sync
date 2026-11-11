@@ -1,0 +1,25 @@
+# 기본값은 docker-compose.yml 로컬 환경 기준이다
+server:
+  port: 8083
+
+spring:
+  application:
+    name: admin-api
+  datasource:
+    url: jdbc:mysql://localhost:3306/fulfillment?serverTimezone=Asia/Seoul
+    username: fulfillment
+    password: fulfillment
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+app:
+  shopby:
+    base-url: http://localhost:8090
+  tpl:
+    base-url: http://localhost:8090

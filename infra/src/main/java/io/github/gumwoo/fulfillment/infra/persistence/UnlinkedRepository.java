@@ -10,6 +10,11 @@ public interface UnlinkedRepository extends JpaRepository<UnlinkedEntity, Long> 
 
     List<UnlinkedEntity> findByOrderProductOptionNo(Long orderProductOptionNo);
 
+    /** SELECT ... FOR UPDATE: 같은 미연동 건 재처리를 직렬화한다 */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select u from UnlinkedEntity u where u.id = :id")
+    Optional<UnlinkedEntity> lockById(@org.springframework.data.repository.query.Param("id") Long id);
+
     /** 미해결 건이 이미 있으면 무시 (uq_unlinked_open) */
     @org.springframework.data.jpa.repository.Modifying
     @org.springframework.data.jpa.repository.Query(value = "INSERT IGNORE INTO unlinked (order_product_option_no, reason_code, detail, detected_at, open_key) "

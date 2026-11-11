@@ -49,7 +49,11 @@ public class JpaShipmentStore implements ShipmentStore {
 
     @Override
     public void recordUnlinkedIfAbsent(long orderProductOptionNo, String reasonCode, String detail, LocalDateTime at) {
-        unlinked.insertOpenIgnore(orderProductOptionNo, reasonCode, detail, at);
+        if (unlinked.insertOpenIgnore(orderProductOptionNo, reasonCode, detail, at) == 0) {
+            // 이미 미해결 건이 있다: 최신 사유로 갱신 (매핑을 고친 뒤 다른 이유로 거절된 경우 등)
+            unlinked.findFirstByOrderProductOptionNoAndResolvedAtIsNull(orderProductOptionNo)
+                    .ifPresent(u -> u.updateReason(reasonCode, detail));
+        }
     }
 
     @Override
