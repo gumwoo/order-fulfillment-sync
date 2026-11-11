@@ -69,6 +69,11 @@ https://workspace-help.nhn-commerce.com/contents/recommended/webhook
 - `GET /webhooks/failed`의 `data` 필드 형식: 스펙 예시가 `"data"` 문자열뿐이다.
   - 그래서 코드는 `data`를 파싱하지 않는다.
   - 대신 `exceptionDateTime` 앞뒤 구간을 `searchDateType=STATUS_CHANGE`로 다시 조회한다.
+- `GET /webhooks/failed`의 `exceptionDateTime`과 주문 `statusChangeYmdt`의 관계.
+  - 코드는 실패 시각 앞 5분, 뒤 1분을 재조회한다.
+  - 이 구간을 벗어나면 주기 재조회(5분)와 대사 배치가 잡는다.
+- `GET /orders`의 STATUS_CHANGE 조회 구간 최대 길이: 스펙에 기본값(3개월 전)만 있고 최대값은 없다.
+  - watermark가 7일보다 오래된 경우의 복구(F-06)가 긴 구간을 조회한다.
 - 오류 응답 본문 형식: 코드는 HTTP 상태 코드만 본다.
 - `ratelimit-available-level`의 `EXHAUSTED` 외 값: 코드는 `EXHAUSTED`만 판단한다.
 
