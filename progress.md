@@ -2,6 +2,13 @@
 
 세션이 끝날 때마다 위에 추가한다. 형식: 날짜 / 한 일 / 확인한 것 / 남은 것 / 다음 세션이 먼저 할 일.
 
+## 2026-11-11 (5) F-04 순서 역전
+
+- 한 일: OutOfOrderScenarioTest. 구현은 F-03의 StatusTransitionPolicy(ADR-0003).
+- 확인한 것: `scenarioTest --tests '*OutOfOrderScenarioTest'` 3개 통과. 리뷰(Sonnet) 문제 없음.
+  - DELIVERY_ING 반영 후 PAY_DONE → 상태 유지, conflict 1건(BACKWARD_TRANSITION)
+  - 같은 PAY_DONE 2회 → conflict 1, DUPLICATE 1
+
 ## 2026-11-11 (4) F-03 멱등 반영
 
 - 한 일
