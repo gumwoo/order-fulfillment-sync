@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew check*)",
+      "Bash(bash scripts/harness/*)",
+      "Bash(docker compose *)"
+    ],
+    "ask": [
+      "Bash(git push*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash scripts/harness/stop-check.sh" }
+        ]
+      }
+    ]
+  }
+}

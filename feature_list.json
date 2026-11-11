@@ -1,0 +1,16 @@
+[
+  {"id": "F-01", "category": "skeleton", "description": "docker compose로 MySQL, Redis, LocalStack SQS가 뜨고 모든 모듈이 빌드된다", "verify": "./gradlew check", "passes": false},
+  {"id": "F-02", "category": "inbound", "description": "CHANGE_ORDER_STATUS 웹훅 배열을 받으면 원본을 inbox에 저장하고 200을 응답하며, 원소마다 SQS 메시지 1개가 발행된다", "verify": "WebhookInboundScenarioTest", "passes": false},
+  {"id": "F-03", "category": "idempotency", "description": "같은 웹훅이 3번 들어오고 같은 변경이 재조회 경로로 한 번 더 들어와도 상태 반영은 1회다", "verify": "IdempotencyScenarioTest", "passes": false},
+  {"id": "F-04", "category": "ordering", "description": "DELIVERY_ING 이후에 PAY_DONE이 도착해도 상태가 되돌아가지 않고 conflict가 남는다", "verify": "OutOfOrderScenarioTest", "passes": false},
+  {"id": "F-05", "category": "recovery", "description": "웹훅 30%를 버려도 실패 웹훅 조회와 STATUS_CHANGE 재조회 후 불일치가 0이 된다", "verify": "WebhookLossRecoveryScenarioTest", "passes": false},
+  {"id": "F-06", "category": "recovery", "description": "watermark가 7일보다 오래되면 실패 웹훅 조회 대신 경보를 남기고 STATUS_CHANGE 재조회로 복구한다", "verify": "StaleWatermarkScenarioTest", "passes": false},
+  {"id": "F-07", "category": "rate-limit", "description": "인스턴스 3개가 동시에 호출해도 샵바이 mock 호출이 초당 80회를 넘지 않고, 429와 EXHAUSTED를 받아도 DLQ로 가는 메시지가 0건이다", "verify": "GlobalRateLimiterScenarioTest", "passes": false},
+  {"id": "F-08", "category": "cancel", "description": "3PL 상태가 출고요청일 때 취소가 들어오면 3PL 취소 후 샵바이 취소가 완료된다", "verify": "CancelBeforeWorkScenarioTest", "passes": false},
+  {"id": "F-09", "category": "cancel", "description": "출고작업(피킹 전)에 취소가 들어오면 샵바이 배송보류가 걸리고, 3PL 취소 성공 후 취소가 완료된다. 배송보류 일괄 실패 시 건별 재시도한다", "verify": "CancelDuringWorkScenarioTest", "passes": false},
+  {"id": "F-10", "category": "cancel", "description": "피킹 이후 취소가 들어오면 이미출고 API가 호출되고 CS 회수 목록에 1건이 생긴다", "verify": "CancelAfterPickingScenarioTest", "passes": false},
+  {"id": "F-11", "category": "invoice", "description": "송장 100건 일괄 반영 중 7건이 실패하면 그 7건만 다시 보낸다", "verify": "InvoicePartialFailureScenarioTest", "passes": false},
+  {"id": "F-12", "category": "delay", "description": "출고 확정이 송장보다 먼저 오면 지연 큐로 갔다가 송장 도착 후 반영되고, 최대 횟수 초과 시 conflict와 묶음 알림 1건이 생긴다", "verify": "DelayedRequeueScenarioTest", "passes": false},
+  {"id": "F-13", "category": "admin", "description": "옵션명 매핑 실패가 미연동 목록에 사유 코드와 함께 보이고, 재처리를 두 번 눌러도 한 번만 처리되며 이력이 남는다", "verify": "AdminReprocessScenarioTest", "passes": false},
+  {"id": "F-14", "category": "architecture", "description": "core가 Spring/JPA/AWS를 참조하지 않고, 실행 모듈끼리 참조하지 않으며, 샵바이 호출은 ShopbyClient로만 나간다", "verify": "ArchitectureTest", "passes": false}
+]
