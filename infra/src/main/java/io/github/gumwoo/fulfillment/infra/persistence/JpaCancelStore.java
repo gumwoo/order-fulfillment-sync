@@ -61,6 +61,15 @@ public class JpaCancelStore implements CancelStore, ConflictRecorder {
     }
 
     @Override
+    public boolean recordIfAbsent(String targetKey, String reasonCode, String detail, LocalDateTime at) {
+        if (conflicts.existsByTargetKeyAndReasonCodeAndResolvedAtIsNull(targetKey, reasonCode)) {
+            return false;
+        }
+        record(targetKey, reasonCode, detail, at);
+        return true;
+    }
+
+    @Override
     public void record(String targetKey, String reasonCode, String detail, LocalDateTime at) {
         conflicts.save(new ConflictEntity(targetKey, reasonCode, detail == null ? null
                 : detail.substring(0, Math.min(detail.length(), 1000)), at));

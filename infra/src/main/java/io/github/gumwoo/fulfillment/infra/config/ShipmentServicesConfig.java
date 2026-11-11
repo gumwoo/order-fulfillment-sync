@@ -50,14 +50,17 @@ public class ShipmentServicesConfig {
     }
 
     @Bean
-    public JpaInvoiceStore invoiceStore(ShipmentRepository shipments, TplCursorRepository cursors, AlertRepository alerts,
-                                        NotificationRepository notifications) {
-        return new JpaInvoiceStore(shipments, cursors, alerts, notifications);
+    public JpaInvoiceStore invoiceStore(ShipmentRepository shipments,
+                                        io.github.gumwoo.fulfillment.infra.persistence.OrderLineStateRepository lines,
+                                        TplCursorRepository cursors, AlertRepository alerts,
+                                        NotificationRepository notifications, JpaCancelStore conflicts) {
+        return new JpaInvoiceStore(shipments, lines, cursors, alerts, notifications, conflicts);
     }
 
     @Bean
-    public InvoiceSyncService invoiceSyncService(JpaInvoiceStore store, ShopbyClient shopby, TransactionRunner tx, Clock clock) {
-        return new InvoiceSyncService(store, shopby, tx, clock);
+    public InvoiceSyncService invoiceSyncService(JpaInvoiceStore store, ShopbyClient shopby, JpaCancelStore conflicts,
+                                                 TransactionRunner tx, Clock clock) {
+        return new InvoiceSyncService(store, shopby, conflicts, store, tx, clock);
     }
 
     @Bean

@@ -55,10 +55,14 @@ public class TplEventService {
                 return Result.UNKNOWN_SHIPMENT;
             }
             if ("INVOICE_ISSUED".equals(e.type())) {
+                if (s.tplStatus() == Status.CANCELED) {
+                    return Result.APPLIED;
+                }
                 store.saveInvoice(e.orderProductOptionNo(), e.invoiceNo(), e.deliveryCompanyType(), now);
                 return Result.APPLIED;
             }
-            if (e.status() != null && s.tplStatus() != Status.CANCELED) {
+            if (e.status() != null) {
+                // 저장소가 앞 단계로만 바꾼다 (늦게 처리된 이벤트가 되돌리지 않음)
                 store.updateTplStatus(e.orderProductOptionNo(), e.status(), now);
             }
             if (e.status() == Status.RELEASED && s.invoiceNo() == null) {
@@ -73,8 +77,10 @@ public class TplEventService {
         LocalDateTime now = LocalDateTime.now(clock);
         tx.inTransaction(() -> {
             String detail = "출고완료 후 송장이 " + attempts + "회 재확인에도 없음";
-            conflicts.record(String.valueOf(orderProductOptionNo), CONFLICT_RELEASE_WITHOUT_INVOICE, detail, now);
-            alerts.add(CONFLICT_RELEASE_WITHOUT_INVOICE, String.valueOf(orderProductOptionNo), detail, now);
+            // 같은 이벤트가 두 번 들어와도(수집 중 재시작 등) conflict와 경보는 한 번
+            if (conflicts.recordIfAbsent(String.valueOf(orderProductOptionNo), CONFLICT_RELEASE_WITHOUT_INVOICE, detail, now)) {
+                alerts.add(CONFLICT_RELEASE_WITHOUT_INVOICE, String.valueOf(orderProductOptionNo), detail, now);
+            }
             return null;
         });
     }

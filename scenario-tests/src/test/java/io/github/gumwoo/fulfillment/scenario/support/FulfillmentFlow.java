@@ -23,13 +23,20 @@ public final class FulfillmentFlow {
 
     /** @param extraApps 추가로 띄울 앱 (예: ADMIN, RECONCILER) */
     public static FulfillmentFlow start(Set<App> extraApps) {
+        return start(extraApps, Map.of());
+    }
+
+    /** @param workerProps worker에 더할 설정 (예: 지연 재처리 간격) */
+    public static FulfillmentFlow start(Set<App> extraApps, Map<String, Object> workerProps) {
         ScenarioStack stack = ScenarioStack.get();
         Map<App, Map<String, Object>> apps = new LinkedHashMap<>();
         for (App app : App.values()) {
             if (app == App.MOCK || app == App.INBOUND) {
                 apps.put(app, Map.of());
             } else if (app == App.WORKER) {
-                apps.put(app, Map.of("app.worker.fulfillment-enabled", "true"));
+                Map<String, Object> w = new LinkedHashMap<>(workerProps);
+                w.put("app.worker.fulfillment-enabled", "true");
+                apps.put(app, w);
             } else if (extraApps.contains(app)) {
                 apps.put(app, Map.of());
             }
@@ -58,6 +65,24 @@ public final class FulfillmentFlow {
         await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
             assertThat(mock.option(optionNo).path("orderStatusType").asText()).isEqualTo("PRODUCT_PREPARE");
             assertThat(mock.tplOrder(optionNo).path("status").asText()).isEqualTo("REQUESTED");
+        });
+    }
+
+    /** 결제완료 주문 여러 개를 만들고 모두 3PL 출고요청·상품준비중까지 기다린다 */
+    public void createPaidOrdersAndAwaitRequested(List<Long> optionNos, java.util.function.LongUnaryOperator deliveryNoOf) {
+        for (long no : optionNos) {
+            mock.createOrder("20261111" + no, deliveryNoOf.applyAsLong(no), "PAY_DONE", true,
+                    List.of(MockShopby.option(no, "색상", "검정")));
+        }
+        await().atMost(Duration.ofSeconds(120)).pollInterval(Duration.ofSeconds(1)).untilAsserted(() -> {
+            for (long no : optionNos) {
+                assertThat(mock.tplOrder(no).path("status").asText()).isEqualTo("REQUESTED");
+            }
+        });
+        await().atMost(Duration.ofSeconds(60)).pollInterval(Duration.ofSeconds(1)).untilAsserted(() -> {
+            for (long no : optionNos) {
+                assertThat(mock.option(no).path("orderStatusType").asText()).isEqualTo("PRODUCT_PREPARE");
+            }
         });
     }
 

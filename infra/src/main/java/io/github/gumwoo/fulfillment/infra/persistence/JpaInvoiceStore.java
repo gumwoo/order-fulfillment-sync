@@ -13,17 +13,24 @@ import org.springframework.data.domain.Limit;
 
 public class JpaInvoiceStore implements InvoiceStore, AlertStore {
 
+    public static final String CONFLICT_INVOICE_MISMATCH = "INVOICE_MISMATCH_IN_DELIVERY";
+
     private final ShipmentRepository shipments;
+    private final OrderLineStateRepository lines;
     private final TplCursorRepository cursors;
     private final AlertRepository alerts;
     private final NotificationRepository notifications;
+    private final io.github.gumwoo.fulfillment.core.port.ConflictRecorder conflicts;
 
-    public JpaInvoiceStore(ShipmentRepository shipments, TplCursorRepository cursors, AlertRepository alerts,
-                           NotificationRepository notifications) {
+    public JpaInvoiceStore(ShipmentRepository shipments, OrderLineStateRepository lines, TplCursorRepository cursors,
+                           AlertRepository alerts, NotificationRepository notifications,
+                           io.github.gumwoo.fulfillment.core.port.ConflictRecorder conflicts) {
         this.shipments = shipments;
+        this.lines = lines;
         this.cursors = cursors;
         this.alerts = alerts;
         this.notifications = notifications;
+        this.conflicts = conflicts;
     }
 
     @Override
@@ -42,18 +49,44 @@ public class JpaInvoiceStore implements InvoiceStore, AlertStore {
         shipments.findById(optionNo).ifPresent(s -> s.invoice(invoiceNo, company, at));
     }
 
+    /**
+     * by-shipping-no는 배송번호 기준으로 처리된다(스펙). 배송의 모든 옵션이 준비됐을 때만 보낸다:
+     * 우리가 아는 그 배송의 주문 라인(취소 완료 제외)마다 출고 행이 있고, 모두 출고완료이며, 송장이 하나로 같아야 한다.
+     */
     @Override
-    public List<PendingInvoice> findPending(int limit) {
-        // 배송번호 하나에 옵션이 여러 개일 수 있다: 배송번호로 묶는다
-        Map<Long, PendingInvoice> byShipping = new LinkedHashMap<>();
-        for (ShipmentEntity s : shipments.findReleasedInvoicePending(Limit.of(limit * 10))) {
-            if (byShipping.size() >= limit && !byShipping.containsKey(s.getDeliveryNo())) {
+    public List<PendingInvoice> lockPending(int limit, int maxFailures) {
+        List<PendingInvoice> result = new ArrayList<>();
+        for (Long deliveryNo : shipments.findCandidateDeliveryNos(maxFailures, limit * 3)) {
+            if (result.size() >= limit) {
                 break;
             }
-            byShipping.putIfAbsent(s.getDeliveryNo(),
-                    new PendingInvoice(s.getDeliveryNo(), s.getDeliveryCompanyType(), s.getInvoiceNo()));
+            List<ShipmentEntity> locked = shipments.lockByDeliveryNo(deliveryNo);
+            Map<Long, ShipmentEntity> byOption = new LinkedHashMap<>();
+            locked.forEach(s -> byOption.put(s.getOrderProductOptionNo(), s));
+            List<OrderLineStateEntity> deliveryLines = lines.findByDeliveryNo(deliveryNo).stream()
+                    .filter(l -> !io.github.gumwoo.fulfillment.core.order.ClaimStatus.isCancelDone(l.toDomain().claimStatusType()))
+                    .toList();
+            boolean ready = !deliveryLines.isEmpty() && deliveryLines.stream().allMatch(l -> {
+                ShipmentEntity s = byOption.get(l.getOrderProductOptionNo());
+                return s != null && s.getTplStatus() == Status.RELEASED && s.getInvoiceNo() != null
+                        && s.getInvoiceSyncedAt() == null;
+            });
+            if (!ready) {
+                continue;
+            }
+            java.util.Set<String> invoices = deliveryLines.stream()
+                    .map(l -> byOption.get(l.getOrderProductOptionNo()))
+                    .map(s -> s.getDeliveryCompanyType() + "|" + s.getInvoiceNo())
+                    .collect(java.util.stream.Collectors.toSet());
+            if (invoices.size() > 1) {
+                conflicts.recordIfAbsent("shipping:" + deliveryNo, CONFLICT_INVOICE_MISMATCH,
+                        "한 배송의 옵션별 송장이 다름: " + invoices, LocalDateTime.now());
+                continue;
+            }
+            ShipmentEntity first = byOption.get(deliveryLines.get(0).getOrderProductOptionNo());
+            result.add(new PendingInvoice(deliveryNo, first.getDeliveryCompanyType(), first.getInvoiceNo()));
         }
-        return new ArrayList<>(byShipping.values());
+        return result;
     }
 
     @Override
@@ -62,8 +95,12 @@ public class JpaInvoiceStore implements InvoiceStore, AlertStore {
     }
 
     @Override
-    public void markSyncFailed(long shippingNo, LocalDateTime at) {
-        shipments.findByDeliveryNo(shippingNo).forEach(s -> s.invoiceSyncFailed(at));
+    public int markSyncFailed(long shippingNo, LocalDateTime at) {
+        int max = 0;
+        for (ShipmentEntity s : shipments.findByDeliveryNo(shippingNo)) {
+            max = Math.max(max, s.increaseSyncFailures(at));
+        }
+        return max;
     }
 
     @Override

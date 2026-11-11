@@ -67,6 +67,9 @@ https://workspace-help.nhn-commerce.com/contents/recommended/webhook
 - 클레임 승인(approve)은 배송보류를 해제한다. 이미출고(already-delivery)는 배송보류를 해제하고 주문 상태와 무관하게 배송중으로 바꾼다.
 - 클레임이 있거나 배송보류 중인 옵션은 상품준비중 변경(prepare-product)과 송장 일괄 반영(by-shipping-no)에서 거절된다.
 - 이미 완료된 클레임의 승인, 이미 철회된 클레임의 이미출고는 400이다.
+- `by-shipping-no`는 배송번호의 모든 옵션을 한 송장으로 배송중 처리한다.
+  - 코드는 이를 전제로, 배송의 모든 옵션이 출고완료·송장 동일일 때만 보낸다.
+  - 한 배송 안에서 옵션별 송장이 다를 수 있는지는 확인하지 못했다. 다르면 conflict로 남긴다.
 
 
 - `GET /webhooks/failed`의 `data` 필드 형식: 스펙 예시가 `"data"` 문자열뿐이다.
