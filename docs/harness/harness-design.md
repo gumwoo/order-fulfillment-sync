@@ -39,9 +39,9 @@
 |---|---|---|---|
 | doc-lint: 문서 링크, ADR 형식, feature_list 개수 감소 금지 | Stop 훅 | 계산형 | 작성 완료 |
 | scope-check: 실행 계획 허용 경로 밖 변경 차단 | Stop 훅 | 계산형 | 작성 완료 |
-| `./gradlew check` (컴파일, 단위·통합 테스트) | Stop 훅 (gradlew가 생긴 뒤부터) | 계산형 | 코드 생성 후 |
+| `./gradlew check` (컴파일, 단위 테스트, ArchUnit) | Stop 훅 | 계산형 | 동작 중 |
 | ArchUnit: core 순수성, 실행 모듈 간 참조 금지, 샵바이 호출 단일 경로 | `gradlew check`에 포함 | 계산형 | 코드 생성 후 |
-| 시나리오 테스트 F-01~F-14 (Testcontainers + mock 서버) | `gradlew check`에 포함 | 계산형 | 코드 생성 후 |
+| 시나리오 테스트 F-02~F-13 (Testcontainers + mock 서버, `scenario-tests` 모듈) | 기능 완료 시 `./gradlew scenarioTest` | 계산형 | 동작 중 |
 | 새 컨텍스트 코드 리뷰 (`/code-review`) | PR 전 | 추론형 | 수동 |
 
 ### 재시도 상한
@@ -66,3 +66,11 @@ Stop 훅이 같은 이유로 계속 막으면 Claude Code는 연속 8회 차단 
 - 2026-11-11: reviewer 에이전트 모델을 sonnet으로 지정.
   - 체크리스트형 검토라 비용 대비 충분하다고 판단했다.
   - 작성 모델과 다른 모델이 보게 되는 효과도 있다.
+- 2026-11-11: 빠른 검사와 느린 검사를 나눴다 (사용자 위임 사항 3).
+  - Stop 훅의 `./gradlew check`는 컴파일, 단위 테스트, ArchUnit만 돌린다.
+  - Testcontainers 시나리오 테스트는 `scenario-tests` 모듈의 `scenarioTest` 태스크로 분리했다.
+    `check`에서는 컴파일만 한다.
+  - 이유: 시나리오 테스트는 MySQL·Redis·LocalStack 컨테이너와 여러 Spring 컨텍스트를 띄운다.
+    F-02 하나에 약 21초가 걸렸고, 기능이 늘면 매 종료마다 수 분이 걸린다.
+  - 대신 기능을 완료할 때(passes를 true로 바꾸기 전) 해당 verify 테스트를 반드시 실행한다.
+  - `test_failures.py`는 `scenarioTest` 결과도 읽는다.

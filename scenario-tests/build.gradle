@@ -1,0 +1,40 @@
+// 시나리오 테스트(F-02~F-13): 모든 실행 모듈을 한 JVM에서 띄우고 Testcontainers(MySQL, Redis, LocalStack)로 검증한다.
+// 느리므로 ./gradlew check(Stop 훅)에서는 컴파일만 하고, ./gradlew scenarioTest로 따로 실행한다.
+dependencies {
+    testImplementation project(':core')
+    testImplementation project(':infra')
+    testImplementation project(':inbound-api')
+    testImplementation project(':worker')
+    testImplementation project(':reconciler')
+    testImplementation project(':admin-api')
+    testImplementation project(':mock-servers')
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-web'
+    testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:mysql'
+    testImplementation 'org.testcontainers:localstack'
+    testImplementation 'org.awaitility:awaitility'
+    testImplementation platform('software.amazon.awssdk:bom:2.57.13')
+    testImplementation 'software.amazon.awssdk:sqs'
+    testRuntimeOnly 'com.mysql:mysql-connector-j'
+}
+
+tasks.named('test') {
+    // check에서는 시나리오 테스트를 실행하지 않는다 (컴파일은 한다)
+    enabled = false
+}
+
+tasks.register('scenarioTest', Test) {
+    description = '시나리오 테스트(Testcontainers). 예: ./gradlew scenarioTest --tests "*WebhookInboundScenarioTest"'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    maxParallelForks = 1
+    testLogging {
+        events 'failed'
+        exceptionFormat 'full'
+    }
+}

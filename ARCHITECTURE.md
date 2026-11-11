@@ -23,6 +23,11 @@ admin-api ───┘
 ```
 
 - `core`는 Spring, JPA, AWS SDK를 import하지 않는다.
+- 실행 모듈은 `infra`도 의존한다. 허용 범위는 다음과 같다.
+  - DB 접근: 그 모듈만 쓰는 테이블(예: inbound의 `webhook_inbox`, `outbox`)은 infra의 JPA 엔티티·리포지토리를 직접 쓴다.
+    여러 모듈이 공유하는 규칙(상태 반영 등)은 `core` 서비스와 영속성 포트(`OrderSyncStore` 등)를 거친다.
+  - 설정: infra의 `@Configuration`을 `@Import`한다.
+  - 외부 호출: 아래 규칙대로 반드시 `core` 포트를 쓴다. infra의 어댑터 내부를 직접 쓰지 않는다.
 - 실행 모듈(inbound-api, worker, reconciler, admin-api)끼리는 서로 참조하지 않는다.
 - 외부 호출(샵바이, 3PL, SQS, Redis)은 `core`의 포트를 통해서만 한다. 구현은 `infra`.
 - 샵바이 호출은 반드시 전역 레이트 리미터를 거친다 (`ShopbyClient` 하나로만 나간다).

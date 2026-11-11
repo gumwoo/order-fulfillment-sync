@@ -7,5 +7,7 @@
 | [0001](0001-idempotency-key-in-db.md) | 멱등 키를 DB에 둔다 | 채택 |
 | [0002](0002-polling-is-source-of-truth.md) | 최종 기준은 조회 API | 채택 |
 | [0003](0003-status-rank-ordering.md) | 도착 순서 대신 상태 우선순위로 판정 | 채택 |
-| [0004](0004-global-rate-limiter.md) | 전역 레이트 리미터, 429는 DLQ로 보내지 않음 | 채택 |
+| [0004](0004-global-rate-limiter.md) | 전역 레이트 리미터, 429는 DLQ로 보내지 않음 | 대체됨 (0007) |
 | [0005](0005-cancel-vs-shipment-flow.md) | 취소·출고 경합 처리 | 채택 |
+| [0006](0006-sqs-standard-queue.md) | SQS Standard 큐를 쓰고 FIFO는 쓰지 않는다 | 채택 |
+| [0007](0007-rate-limit-retry-by-republish.md) | 전역 레이트 리미터와 429 재시도는 재발행으로 (0004 대체) | 채택 |

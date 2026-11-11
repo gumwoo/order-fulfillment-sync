@@ -1,6 +1,6 @@
 [
   {"id": "F-01", "category": "skeleton", "description": "docker compose로 MySQL, Redis, LocalStack SQS가 뜨고 모든 모듈이 빌드된다", "verify": "./gradlew check", "passes": true},
-  {"id": "F-02", "category": "inbound", "description": "CHANGE_ORDER_STATUS 웹훅 배열을 받으면 원본을 inbox에 저장하고 200을 응답하며, 원소마다 SQS 메시지 1개가 발행된다", "verify": "WebhookInboundScenarioTest", "passes": false},
+  {"id": "F-02", "category": "inbound", "description": "CHANGE_ORDER_STATUS 웹훅 배열을 받으면 원본을 inbox에 저장하고 200을 응답하며, 원소마다 SQS 메시지 1개가 발행된다", "verify": "WebhookInboundScenarioTest", "passes": true},
   {"id": "F-03", "category": "idempotency", "description": "같은 웹훅이 3번 들어오고 같은 변경이 재조회 경로로 한 번 더 들어와도 상태 반영은 1회다", "verify": "IdempotencyScenarioTest", "passes": false},
   {"id": "F-04", "category": "ordering", "description": "DELIVERY_ING 이후에 PAY_DONE이 도착해도 상태가 되돌아가지 않고 conflict가 남는다", "verify": "OutOfOrderScenarioTest", "passes": false},
   {"id": "F-05", "category": "recovery", "description": "웹훅 30%를 버려도 실패 웹훅 조회와 STATUS_CHANGE 재조회 후 불일치가 0이 된다", "verify": "WebhookLossRecoveryScenarioTest", "passes": false},

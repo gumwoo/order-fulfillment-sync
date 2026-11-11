@@ -1,3 +1,14 @@
 dependencies {
     api project(':core')
+
+    // 실행 모듈이 infra 리포지토리와 @Transactional을 쓰므로 api로 노출한다
+    api 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-json'
+    implementation 'org.springframework:spring-web'
+    implementation platform('software.amazon.awssdk:bom:2.57.13')
+    implementation 'software.amazon.awssdk:sqs'
+    runtimeOnly 'com.mysql:mysql-connector-j'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }

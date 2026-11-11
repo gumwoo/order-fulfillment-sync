@@ -2,6 +2,29 @@
 
 세션이 끝날 때마다 위에 추가한다. 형식: 날짜 / 한 일 / 확인한 것 / 남은 것 / 다음 세션이 먼저 할 일.
 
+## 2026-11-11 (3) F-02 웹훅 수신
+
+- 한 일
+  - 위임 사항을 실행 계획 결정 로그에 기록. 빠른 검사(`check`)와 시나리오 검사(`scenarioTest`)를 분리했다.
+  - 공식 자료 확인: 샵바이 OpenAPI 스펙(주문 조회, 실패 웹훅, 상태 변경 API), 웹훅 가이드, SQS 문서를 external-facts.md에 추가
+  - ADR-0006: SQS Standard 큐, FIFO 미사용 (FIFO는 메시지별 지연 불가)
+  - ADR-0007: 429는 재발행으로 재시도. ADR-0004 대체 (`maxReceiveCount`는 수신 횟수를 센다)
+  - inbound-api 흐름: `webhook_inbox` 저장 → 같은 트랜잭션에서 원소별 `outbox` → 200 → 릴레이가 SQS 발행
+    - 릴레이는 `FOR UPDATE SKIP LOCKED`로 행을 선점한다
+  - SQS 어댑터(발행, 소비 루프, Disposition), `scenario-tests` 모듈(ScenarioStack: 컨테이너 1회 기동, 필요한 앱만 기동)
+  - 리뷰(Sonnet) 지적 반영
+    - 릴레이 다중 인스턴스 중복 발행
+    - 실패 행이 뒤 행을 막는 문제
+    - 소비자 배치 중단
+    - 혼합 배열과 단일 객체 처리
+    - ARCHITECTURE에 infra 직접 사용 범위 명시
+- 확인한 것
+  - `./gradlew check` 통과
+  - `scenarioTest --tests '*WebhookInboundScenarioTest'`: 6개 통과
+  - 변이 테스트: SKIP LOCKED를 빼면 동시 릴레이 테스트가 300건 대신 1,400건 발행으로 실패, 되돌리면 통과
+- 확인하지 못한 것: 실제 다중 프로세스(별도 JVM) 환경. 테스트는 한 JVM의 4개 스레드 + 스케줄러로 흉내냈다.
+- 다음: F-03 (멱등 반영). core 도메인과 영속성 일부는 작성 중이라 커밋하지 않았다.
+
 ## 2026-11-11 (2) F-01, F-14
 
 - 한 일

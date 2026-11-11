@@ -26,7 +26,7 @@
 
 - 한 세션에 기능 하나. 끝나면 테스트 통과 확인 → `progress.md` 갱신 → 커밋 메시지 초안 작성.
 - `feature_list.json`은 `passes` 값만 바꾼다. 항목 삭제·문구 수정 금지 (doc-lint가 개수 감소를 막는다).
-- `passes:true`는 해당 항목의 `verify` 테스트가 실제로 통과한 뒤에만 바꾼다.
+- `passes:true`는 해당 항목의 `verify` 테스트가 실제로 통과한 뒤에만 바꾼다. 시나리오 테스트는 `./gradlew scenarioTest`로 돌린다.
 - 외부 API 동작은 [external-facts.md](docs/references/external-facts.md)에 있는 것만 가정한다.
   없는 동작이 필요하면 추측하지 말고 문서에 "미확인"으로 적고 사람에게 묻는다.
 - 수정은 활성 실행 계획의 `허용 경로` 안에서만 한다. Stop 훅의 scope-check가 막는다.
@@ -35,7 +35,9 @@
 ## 명령
 
 ```bash
-./gradlew check                    # 빌드 + 테스트 + ArchUnit
+./gradlew check                    # 빌드 + 단위 테스트 + ArchUnit (Stop 훅이 실행, 빠른 검사)
+./gradlew scenarioTest             # 시나리오 테스트 F-02~F-13 (Testcontainers, 느림, 기능 완료 시 실행)
+./gradlew scenarioTest --tests '*IdempotencyScenarioTest'   # feature_list의 verify 하나만
 bash scripts/harness/doc-lint.sh   # 문서 링크, ADR 형식, feature_list 검사
 bash scripts/harness/scope-check.sh
 docker compose up -d               # MySQL, Redis, LocalStack(SQS)
@@ -44,5 +46,5 @@ docker compose up -d               # MySQL, Redis, LocalStack(SQS)
 ## 하지 말 것
 
 - 웹훅을 유일한 진실로 취급하지 않는다. 최종 기준은 주문 조회 API다 ([ADR-0002](docs/adr/0002-polling-is-source-of-truth.md)).
-- 429를 DLQ로 보내지 않는다 ([ADR-0004](docs/adr/0004-global-rate-limiter.md)).
+- 429를 DLQ로 보내지 않는다. 재발행으로 다시 시도한다 ([ADR-0007](docs/adr/0007-rate-limit-retry-by-republish.md)).
 - 중복 제거를 SQS FIFO에만 맡기지 않는다 ([ADR-0001](docs/adr/0001-idempotency-key-in-db.md)).

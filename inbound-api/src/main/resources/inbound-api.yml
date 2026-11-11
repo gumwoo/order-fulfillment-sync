@@ -1,0 +1,23 @@
+# 기본값은 docker-compose.yml 로컬 환경 기준이다
+server:
+  port: 8081
+
+spring:
+  application:
+    name: inbound-api
+  datasource:
+    url: jdbc:mysql://localhost:3306/fulfillment?serverTimezone=Asia/Seoul
+    username: fulfillment
+    password: fulfillment
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+app:
+  sqs:
+    endpoint: http://localhost:4566
+    region: ap-northeast-2
+    create-queues: true
+  outbox:
+    relay-interval-ms: 200

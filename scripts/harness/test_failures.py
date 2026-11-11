@@ -18,7 +18,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")
 
 found = 0
-for path in sorted(glob.glob("*/build/test-results/test/*.xml")):
+for path in sorted(glob.glob("*/build/test-results/*/*.xml")):
     if os.path.getmtime(path) < since:
         continue
     try:
