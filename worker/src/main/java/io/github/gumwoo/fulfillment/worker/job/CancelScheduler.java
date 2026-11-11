@@ -8,8 +8,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * 배송보류 대기 건 일괄 처리와 멈춘 취소 건 이어 하기 (ADR-0005). 여러 인스턴스가 동시에 돌면 같은 건을 두 번 보류할 수 있어
- * 운영에서는 한 인스턴스만 켜거나 분산 락을 둔다(미구현, README에 명시). 시나리오 테스트는 끄고 직접 호출한다.
+ * 배송보류 대기 건 일괄 처리와 중간 단계 건 이어 하기 (ADR-0005, ADR-0009). 취소 건은 행 잠금(FOR UPDATE, SKIP LOCKED)으로
+ * 진행하므로 여러 인스턴스가 동시에 돌아도 한 건을 두 곳에서 진행하지 않는다. 시나리오 테스트는 끄고 직접 호출한다.
  */
 @Component
 @ConditionalOnProperty(name = "app.worker.scheduling-enabled", havingValue = "true", matchIfMissing = true)

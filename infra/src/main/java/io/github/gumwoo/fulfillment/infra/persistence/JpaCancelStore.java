@@ -26,9 +26,23 @@ public class JpaCancelStore implements CancelStore, ConflictRecorder {
     }
 
     @Override
-    public CancelCase createIfAbsent(long optionNo, long claimNo, LocalDateTime at) {
+    public void createIfAbsent(long optionNo, long claimNo, LocalDateTime at) {
         cases.insertIgnore(optionNo, claimNo, at);
-        return cases.findByOrderProductOptionNoAndClaimNo(optionNo, claimNo).orElseThrow().toDomain();
+    }
+
+    @Override
+    public Optional<CancelCase> lock(long optionNo, long claimNo) {
+        return cases.lock(optionNo, claimNo).map(CancelCaseEntity::toDomain);
+    }
+
+    @Override
+    public List<CancelCase> lockByState(CancelState state, int limit) {
+        return cases.lockByState(state.name(), limit).stream().map(CancelCaseEntity::toDomain).toList();
+    }
+
+    @Override
+    public List<CancelCase> findByState(CancelState state, int limit) {
+        return cases.findByStateOrderByIdAsc(state, Limit.of(limit)).stream().map(CancelCaseEntity::toDomain).toList();
     }
 
     @Override
@@ -40,11 +54,6 @@ public class JpaCancelStore implements CancelStore, ConflictRecorder {
     }
 
     @Override
-    public List<CancelCase> findByState(CancelState state, int limit) {
-        return cases.findByStateOrderByIdAsc(state, Limit.of(limit)).stream().map(CancelCaseEntity::toDomain).toList();
-    }
-
-    @Override
     public void addRecallTask(long optionNo, long claimNo, String invoiceNo, String reason, LocalDateTime at) {
         if (!recalls.existsByOrderProductOptionNoAndClaimNo(optionNo, claimNo)) {
             recalls.save(new RecallTaskEntity(optionNo, claimNo, invoiceNo, reason, at));
@@ -53,6 +62,7 @@ public class JpaCancelStore implements CancelStore, ConflictRecorder {
 
     @Override
     public void record(String targetKey, String reasonCode, String detail, LocalDateTime at) {
-        conflicts.save(new ConflictEntity(targetKey, reasonCode, detail, at));
+        conflicts.save(new ConflictEntity(targetKey, reasonCode, detail == null ? null
+                : detail.substring(0, Math.min(detail.length(), 1000)), at));
     }
 }

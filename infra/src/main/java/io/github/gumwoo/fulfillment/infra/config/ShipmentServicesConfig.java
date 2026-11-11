@@ -1,6 +1,14 @@
 package io.github.gumwoo.fulfillment.infra.config;
 
 import io.github.gumwoo.fulfillment.core.cancel.CancelService;
+import io.github.gumwoo.fulfillment.core.shipment.AlertBundler;
+import io.github.gumwoo.fulfillment.core.shipment.InvoiceSyncService;
+import io.github.gumwoo.fulfillment.core.shipment.TplEventService;
+import io.github.gumwoo.fulfillment.infra.json.TplEventJson;
+import io.github.gumwoo.fulfillment.infra.persistence.AlertRepository;
+import io.github.gumwoo.fulfillment.infra.persistence.JpaInvoiceStore;
+import io.github.gumwoo.fulfillment.infra.persistence.NotificationRepository;
+import io.github.gumwoo.fulfillment.infra.persistence.TplCursorRepository;
 import io.github.gumwoo.fulfillment.core.port.OrderSyncStore;
 import io.github.gumwoo.fulfillment.infra.persistence.CancelCaseRepository;
 import io.github.gumwoo.fulfillment.infra.persistence.ConflictRepository;
@@ -36,9 +44,35 @@ public class ShipmentServicesConfig {
     }
 
     @Bean
-    public CancelService cancelService(JpaCancelStore store, TplClient tpl, ShopbyClient shopby, TransactionRunner tx,
-                                       Clock clock) {
-        return new CancelService(store, tpl, shopby, store, tx, clock);
+    public CancelService cancelService(JpaCancelStore store, OrderSyncStore orders, TplClient tpl, ShopbyClient shopby,
+                                       TransactionRunner tx, Clock clock) {
+        return new CancelService(store, orders, tpl, shopby, store, tx, clock);
+    }
+
+    @Bean
+    public JpaInvoiceStore invoiceStore(ShipmentRepository shipments, TplCursorRepository cursors, AlertRepository alerts,
+                                        NotificationRepository notifications) {
+        return new JpaInvoiceStore(shipments, cursors, alerts, notifications);
+    }
+
+    @Bean
+    public InvoiceSyncService invoiceSyncService(JpaInvoiceStore store, ShopbyClient shopby, TransactionRunner tx, Clock clock) {
+        return new InvoiceSyncService(store, shopby, tx, clock);
+    }
+
+    @Bean
+    public TplEventService tplEventService(JpaInvoiceStore store, JpaCancelStore conflicts, TransactionRunner tx, Clock clock) {
+        return new TplEventService(store, conflicts, store, tx, clock);
+    }
+
+    @Bean
+    public AlertBundler alertBundler(JpaInvoiceStore store, TransactionRunner tx, Clock clock) {
+        return new AlertBundler(store, tx, clock);
+    }
+
+    @Bean
+    public TplEventJson tplEventJson(com.fasterxml.jackson.databind.ObjectMapper mapper) {
+        return new TplEventJson(mapper);
     }
 
     @Bean

@@ -14,15 +14,20 @@ public class MessageRouter implements MessageHandler {
     private static final Logger log = LoggerFactory.getLogger(MessageRouter.class);
 
     private final OrderStatusChangedHandler orderStatusChanged;
+    private final TplEventHandler tplEvent;
 
-    public MessageRouter(OrderStatusChangedHandler orderStatusChanged) {
+    public MessageRouter(OrderStatusChangedHandler orderStatusChanged, TplEventHandler tplEvent) {
         this.orderStatusChanged = orderStatusChanged;
+        this.tplEvent = tplEvent;
     }
 
     @Override
     public Disposition handle(QueueMessage message) {
         if (MessageType.ORDER_STATUS_CHANGED.equals(message.type())) {
             return orderStatusChanged.handle(message);
+        }
+        if (MessageType.TPL_EVENT.equals(message.type())) {
+            return tplEvent.handle(message);
         }
         log.warn("알 수 없는 메시지 종류 {}, 삭제", message.type());
         return MessageHandler.done();

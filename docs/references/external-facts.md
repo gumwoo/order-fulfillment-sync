@@ -64,6 +64,9 @@ https://workspace-help.nhn-commerce.com/contents/recommended/webhook
 - 조회 구간 `startYmdt`/`endYmdt`는 양 끝을 포함한다. 코드는 구간을 겹쳐 조회하므로(overlap) 어느 쪽이어도 빠지지 않는다.
 - `totalCount`는 조건에 맞는 주문 수이고, 페이지는 주문 단위다.
 - `GET /webhooks/failed`는 예외 발생 시각 내림차순이다.
+- 클레임 승인(approve)은 배송보류를 해제한다. 이미출고(already-delivery)는 배송보류를 해제하고 주문 상태와 무관하게 배송중으로 바꾼다.
+- 클레임이 있거나 배송보류 중인 옵션은 상품준비중 변경(prepare-product)과 송장 일괄 반영(by-shipping-no)에서 거절된다.
+- 이미 완료된 클레임의 승인, 이미 철회된 클레임의 이미출고는 400이다.
 
 
 - `GET /webhooks/failed`의 `data` 필드 형식: 스펙 예시가 `"data"` 문자열뿐이다.

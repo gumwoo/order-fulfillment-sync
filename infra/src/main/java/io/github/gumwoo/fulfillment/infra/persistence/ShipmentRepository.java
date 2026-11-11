@@ -7,9 +7,11 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface ShipmentRepository extends JpaRepository<ShipmentEntity, Long> {
 
-    /** 송장이 있고 아직 샵바이에 반영하지 않은 출고 (F-11) */
-    @Query("select s from ShipmentEntity s where s.invoiceNo is not null and s.invoiceSyncedAt is null order by s.orderProductOptionNo")
-    List<ShipmentEntity> findInvoicePending(Limit limit);
+    /** 출고완료이고 송장이 있으며 아직 샵바이에 반영하지 않은 출고 (F-11, F-12). 실패 횟수가 적은 것부터 */
+    @Query("select s from ShipmentEntity s where s.tplStatus = io.github.gumwoo.fulfillment.core.port.TplClient.Status.RELEASED"
+            + " and s.invoiceNo is not null and s.invoiceSyncedAt is null and s.deliveryNo is not null"
+            + " order by s.invoiceSyncFailures, s.deliveryNo")
+    List<ShipmentEntity> findReleasedInvoicePending(Limit limit);
 
     List<ShipmentEntity> findByDeliveryNo(Long deliveryNo);
 

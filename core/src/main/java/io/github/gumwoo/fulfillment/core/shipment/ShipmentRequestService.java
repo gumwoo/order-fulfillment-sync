@@ -82,6 +82,13 @@ public class ShipmentRequestService {
                 shipments.resolveUnlinked(orderProductOptionNo, "SYSTEM", now);
                 return null;
             });
+            // 등록하는 사이 취소 신청이 들어와 이미 처리됐을 수 있다(취소 처리는 3PL 미등록이면 3PL 쪽을 건너뛴다).
+            // 그러면 방금 등록한 3PL 주문이 남아 출고될 수 있으므로 바로 취소한다 (ADR-0009)
+            OrderLineState afterRegister = tx.inTransaction(() -> orders.findLine(orderProductOptionNo).orElse(line));
+            if (afterRegister.hasClaim()) {
+                tpl.cancel(orderProductOptionNo);
+                return Result.SKIPPED;
+            }
         }
         // 3PL 등록 사이에 취소 신청이 들어왔을 수 있으므로 상품준비중 변경 직전에 다시 읽는다
         OrderLineState latest = tx.inTransaction(() -> orders.findLine(orderProductOptionNo).orElse(line));
