@@ -134,12 +134,21 @@ public class ShopbyControlController {
         return ResponseEntity.noContent().build();
     }
 
+    /** 배송보류 요청에 이 옵션이 들어 있으면 한 번만 실패. body: [optionNo, ...] */
+    @PostMapping("/faults/hold-fail-once")
+    public ResponseEntity<Void> failHoldOnce(@RequestBody List<Long> optionNos) {
+        faults.failHoldOnce(new HashSet<>(optionNos));
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/stats")
     public Map<String, Object> stats() {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("callsByPath", calls.callsByPath());
         m.put("maxCallsInAnySecond", calls.maxCallsInAnySecond());
         m.put("rejected429", calls.rejected429());
+        m.put("exhaustedSent", calls.exhaustedSent());
+        m.put("maxCallsInAnySlidingSecond", calls.maxCallsInAnySlidingSecond());
         m.put("webhooksSent", webhooks.sentCount());
         m.put("webhooksDropped", webhooks.droppedCount());
         m.put("invoiceRequests", faults.invoiceRequests());

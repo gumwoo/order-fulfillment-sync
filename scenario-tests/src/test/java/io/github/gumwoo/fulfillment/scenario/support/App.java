@@ -10,6 +10,9 @@ public enum App {
     MOCK(MockServersApplication.class, MockServersApplication.CONFIG_NAME),
     INBOUND(InboundApiApplication.class, InboundApiApplication.CONFIG_NAME),
     WORKER(WorkerApplication.class, WorkerApplication.CONFIG_NAME),
+    /** 여러 인스턴스 흉내 (F-07) */
+    WORKER_2(WorkerApplication.class, WorkerApplication.CONFIG_NAME),
+    WORKER_3(WorkerApplication.class, WorkerApplication.CONFIG_NAME),
     RECONCILER(ReconcilerApplication.class, ReconcilerApplication.CONFIG_NAME);
 
     final Class<?> mainClass;

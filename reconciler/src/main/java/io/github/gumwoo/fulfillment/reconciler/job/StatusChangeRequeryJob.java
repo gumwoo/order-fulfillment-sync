@@ -69,44 +69,38 @@ public class StatusChangeRequeryJob {
     /**
      * 구간을 모두 조회해 큐에 넣는다. 실패 웹훅 복구도 이 메서드로 구간 재조회를 한다.
      *
-     * <p>오프셋 페이징(주문번호 내림차순)이라, 조회 중 앞쪽 주문이 다시 바뀌어 구간 밖으로 나가면 뒤 페이지가 당겨져
-     * 한 주문을 건너뛸 수 있다. 페이지마다 totalCount를 비교해 바뀌었으면 처음부터 다시 조회한다.
-     * 이미 넣은 메시지는 멱등 반영되므로 다시 넣어도 결과는 같다. 계속 바뀌면 예외를 던져 watermark를 옮기지 않는다.
+     * <p>오프셋 페이징(주문번호 내림차순)을 앞 페이지부터 읽으면, 조회 중 앞쪽 주문이 다시 바뀌어 구간 밖으로 나갈 때
+     * 뒤 주문이 앞으로 당겨져 건너뛰게 된다. 우리 worker가 처리하며 상태를 바꾸므로 부하 중에 흔히 생긴다(F-07에서 재현).
+     * <ul>
+     *   <li>구간 끝은 과거(현재 초의 1초 전)로 둔다. 그러면 조회 중 구간에 새로 들어오는 주문은 없고, 나가는 주문만 있다.</li>
+     *   <li>마지막 페이지부터 첫 페이지 순서로 읽는다. 아직 읽지 않은 앞쪽에서 주문이 나가면 당겨지는 것은 이미 읽은
+     *       주문이라 중복만 생기고(멱등 반영), 이미 읽은 뒤쪽에서 나가는 것은 앞쪽 페이지에 영향이 없다.</li>
+     *   <li>구간에서 나간 주문은 끝 시각 이후에 바뀐 것이라 다음 실행 구간에 들어간다.</li>
+     * </ul>
      */
     public int requery(LocalDateTime from, LocalDateTime to, String source) {
-        for (int attempt = 1; attempt <= MAX_PASSES; attempt++) {
-            Integer enqueued = requeryOnce(from, to, source);
-            if (enqueued != null) {
-                log.info("재조회 {} ~ {} source={} 주문옵션 {}건 큐 투입", from, to, source, enqueued);
-                return enqueued;
-            }
-            log.info("재조회 중 결과 수가 바뀌어 처음부터 다시 ({}회째)", attempt);
+        LocalDateTime safeEnd = LocalDateTime.now(clock).withNano(0).minusSeconds(1);
+        LocalDateTime end = to.isAfter(safeEnd) ? safeEnd : to;
+        if (end.isBefore(from)) {
+            return 0;
         }
-        throw new IllegalStateException("재조회 결과가 계속 바뀌어 구간을 확정하지 못함: " + from + " ~ " + to);
+        OrderSearchPage first = shopby.searchOrdersByStatusChange(from, end, 1, PAGE_SIZE);
+        int lastPage = Math.max(1, (first.totalCount() + PAGE_SIZE - 1) / PAGE_SIZE);
+        int enqueued = 0;
+        for (int page = lastPage; page >= 2; page--) {
+            enqueued += enqueueAll(shopby.searchOrdersByStatusChange(from, end, page, PAGE_SIZE), source);
+        }
+        // 첫 페이지는 마지막에 다시 읽는다 (앞서 읽은 첫 페이지 이후 당겨진 주문까지 포함되게)
+        OrderSearchPage firstAgain = lastPage == 1 ? first : shopby.searchOrdersByStatusChange(from, end, 1, PAGE_SIZE);
+        enqueued += enqueueAll(firstAgain, source);
+        log.info("재조회 {} ~ {} source={} 주문옵션 {}건 큐 투입", from, end, source, enqueued);
+        return enqueued;
     }
 
-    static final int MAX_PASSES = 3;
-
-    /** @return 넣은 건수, 조회 중 totalCount가 바뀌었으면 null */
-    private Integer requeryOnce(LocalDateTime from, LocalDateTime to, String source) {
-        int enqueued = 0;
-        int page = 1;
-        Integer firstTotal = null;
-        while (true) {
-            OrderSearchPage result = shopby.searchOrdersByStatusChange(from, to, page, PAGE_SIZE);
-            if (firstTotal == null) {
-                firstTotal = result.totalCount();
-            } else if (firstTotal != result.totalCount()) {
-                return null;
-            }
-            for (OrderStatusChange change : result.options()) {
-                queue.send(QueueMessage.of(MessageType.ORDER_STATUS_CHANGED, json.toElementJson(change), source));
-                enqueued++;
-            }
-            if (result.orderCount() < PAGE_SIZE || (long) page * PAGE_SIZE >= result.totalCount()) {
-                return enqueued;
-            }
-            page++;
+    private int enqueueAll(OrderSearchPage page, String source) {
+        for (OrderStatusChange change : page.options()) {
+            queue.send(QueueMessage.of(MessageType.ORDER_STATUS_CHANGED, json.toElementJson(change), source));
         }
+        return page.options().size();
     }
 }

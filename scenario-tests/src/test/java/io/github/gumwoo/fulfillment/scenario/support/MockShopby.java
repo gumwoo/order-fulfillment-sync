@@ -20,8 +20,42 @@ public class MockShopby {
         this.base = URI.create("http://localhost:" + port);
     }
 
+    /** 샵바이와 3PL mock 모두 초기화 */
     public void reset() {
         post("/_mock/shopby/reset", Map.of());
+        post("/_mock/tpl/reset", Map.of());
+    }
+
+    /** 다음 N번 호출에 429, 다음 N번 응답에 EXHAUSTED 헤더, 초당 한도(0이면 끔) */
+    public void rateLimitFaults(int next429, int nextExhausted, int limitPerSecond) {
+        post("/_mock/shopby/faults/rate-limit", Map.of("next429", next429, "nextExhausted", nextExhausted,
+                "limitPerSecond", limitPerSecond));
+    }
+
+    // ---- 3PL mock ----
+
+    public void tplMapping(boolean enforce, List<String> allowed) {
+        post("/_mock/tpl/mapping", Map.of("enforce", enforce, "allowed", allowed));
+    }
+
+    public void tplAllowMapping(String optionNameAndValue) {
+        post("/_mock/tpl/mapping/allow", Map.of("key", optionNameAndValue));
+    }
+
+    public void tplAdvance(long optionNo, String status) {
+        post("/_mock/tpl/orders/" + optionNo + "/advance", Map.of("status", status));
+    }
+
+    public void tplInvoice(long optionNo, String invoiceNo) {
+        post("/_mock/tpl/orders/" + optionNo + "/invoice", Map.of("invoiceNo", invoiceNo, "deliveryCompanyType", "CJ"));
+    }
+
+    public JsonNode tplOrder(long optionNo) {
+        return get("/tpl/orders/" + optionNo);
+    }
+
+    public JsonNode tplStats() {
+        return get("/_mock/tpl/stats");
     }
 
     /** 웹훅 수신 URL과 장애 주입 설정 */
@@ -68,6 +102,10 @@ public class MockShopby {
     public void addFailedWebhook(String exceptionDateTime) {
         post("/_mock/shopby/failed-webhooks", Map.of("eventType", "CHANGE_ORDER_STATUS",
                 "exceptionDateTime", exceptionDateTime, "data", "data"));
+    }
+
+    public void failHoldOnce(List<Long> optionNos) {
+        post("/_mock/shopby/faults/hold-fail-once", optionNos);
     }
 
     public void failInvoiceOnce(List<Long> shippingNos) {

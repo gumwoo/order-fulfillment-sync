@@ -24,5 +24,8 @@ app:
     create-queues: true
   shopby:
     base-url: http://localhost:8090
+  tpl:
+    base-url: http://localhost:8090
   worker:
     consumer-enabled: true
+    fulfillment-enabled: true

@@ -47,6 +47,8 @@ class IdempotencyScenarioTest {
             assertThat(stats.count("WEBHOOK", "DUPLICATE")).isEqualTo(2);
         });
 
+        ScenarioStack.passCurrentSecond();
+
         int enqueued = stack.bean(App.RECONCILER, StatusChangeRequeryJob.class).run();
         assertThat(enqueued).isEqualTo(1);
 
@@ -70,6 +72,7 @@ class IdempotencyScenarioTest {
 
         // 웹훅 없이 상태만 바뀐다 (유실 흉내)
         mock.changeStatus(OPTION, "PRODUCT_PREPARE", false);
+        ScenarioStack.passCurrentSecond();
         StatusChangeRequeryJob job = stack.bean(App.RECONCILER, StatusChangeRequeryJob.class);
         job.run();
         job.run();

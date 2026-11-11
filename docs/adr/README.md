@@ -11,3 +11,4 @@
 | [0005](0005-cancel-vs-shipment-flow.md) | 취소·출고 경합 처리 | 채택 |
 | [0006](0006-sqs-standard-queue.md) | SQS Standard 큐를 쓰고 FIFO는 쓰지 않는다 | 채택 |
 | [0007](0007-rate-limit-retry-by-republish.md) | 전역 레이트 리미터와 429 재시도는 재발행으로 (0004 대체) | 채택 |
+| [0008](0008-tpl-transient-failure-retry.md) | 3PL 일시 장애는 재발행으로 다시 시도한다 (최대 20회) | 채택 |

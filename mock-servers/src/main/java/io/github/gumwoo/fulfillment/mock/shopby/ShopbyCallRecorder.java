@@ -31,6 +31,9 @@ public class ShopbyCallRecorder extends OncePerRequestFilter {
     private final AtomicInteger force429 = new AtomicInteger();
     private final AtomicInteger forceExhausted = new AtomicInteger();
     private final AtomicLong rejected429 = new AtomicLong();
+    private final AtomicLong exhaustedSent = new AtomicLong();
+    /** 도착 시각(ms). 슬라이딩 1초 구간 최대치 계산용 */
+    private final java.util.concurrent.ConcurrentLinkedQueue<Long> arrivals = new java.util.concurrent.ConcurrentLinkedQueue<>();
     private volatile int limitPerSecond = 0;
 
     @Override
@@ -42,7 +45,9 @@ public class ShopbyCallRecorder extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
             throws ServletException, IOException {
-        long second = System.currentTimeMillis() / 1000;
+        long nowMs = System.currentTimeMillis();
+        arrivals.add(nowMs);
+        long second = nowMs / 1000;
         int inThisSecond = bySecond.computeIfAbsent(second, k -> new AtomicInteger()).incrementAndGet();
         byPath.computeIfAbsent(req.getMethod() + " " + normalize(req.getRequestURI()), k -> new AtomicLong()).incrementAndGet();
         boolean overLimit = limitPerSecond > 0 && inThisSecond > limitPerSecond;
@@ -55,6 +60,7 @@ public class ShopbyCallRecorder extends OncePerRequestFilter {
             return;
         }
         if (decrementIfPositive(forceExhausted)) {
+            exhaustedSent.incrementAndGet();
             res.setHeader("ratelimit-available-level", "EXHAUSTED");
         }
         chain.doFilter(req, res);
@@ -82,6 +88,8 @@ public class ShopbyCallRecorder extends OncePerRequestFilter {
         force429.set(0);
         forceExhausted.set(0);
         rejected429.set(0);
+        exhaustedSent.set(0);
+        arrivals.clear();
         limitPerSecond = 0;
     }
 
@@ -99,6 +107,24 @@ public class ShopbyCallRecorder extends OncePerRequestFilter {
 
     public int maxCallsInAnySecond() {
         return bySecond.values().stream().mapToInt(AtomicInteger::get).max().orElse(0);
+    }
+
+    /** 어떤 1,000ms 구간(시작점 임의)에서든 도착한 최대 호출 수. 고정 초 집계보다 엄격하다 */
+    public int maxCallsInAnySlidingSecond() {
+        long[] t = arrivals.stream().mapToLong(Long::longValue).sorted().toArray();
+        int max = 0;
+        int start = 0;
+        for (int end = 0; end < t.length; end++) {
+            while (t[end] - t[start] >= 1000) {
+                start++;
+            }
+            max = Math.max(max, end - start + 1);
+        }
+        return max;
+    }
+
+    public long exhaustedSent() {
+        return exhaustedSent.get();
     }
 
     public long rejected429() {

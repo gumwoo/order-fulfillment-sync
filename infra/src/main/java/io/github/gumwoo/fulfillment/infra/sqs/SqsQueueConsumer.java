@@ -15,6 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
 import software.amazon.awssdk.services.sqs.SqsClient;
+import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityBatchRequest;
+import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityBatchRequestEntry;
 import software.amazon.awssdk.services.sqs.model.DeleteMessageRequest;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.ReceiveMessageRequest;
@@ -66,9 +68,18 @@ public class SqsQueueConsumer implements SmartLifecycle {
                         .waitTimeSeconds(props.waitTimeSeconds())
                         .messageAttributeNames("All")
                         .build()).messages();
-                for (Message m : messages) {
+                long receivedAt = System.currentTimeMillis();
+                for (int i = 0; i < messages.size(); i++) {
+                    Message m = messages.get(i);
                     if (!running) {
                         return;
+                    }
+                    // 묶음을 차례로 처리하는 동안 뒤쪽 메시지의 visibility timeout이 끝나면 다른 소비자가 다시 받아
+                    // receive count가 오른다(F-07에서 maxReceiveCount=1로 재현). 절반이 지나면 남은 메시지를 연장한다.
+                    long halfMs = props.visibilityTimeoutSeconds() * 500L;
+                    if (System.currentTimeMillis() - receivedAt > halfMs) {
+                        extendVisibility(messages.subList(i, messages.size()));
+                        receivedAt = System.currentTimeMillis();
                     }
                     try {
                         process(m);
@@ -106,6 +117,23 @@ public class SqsQueueConsumer implements SmartLifecycle {
             delete(m);
         } else if (disposition instanceof Redeliver r) {
             log.debug("재전송 대기: {}", r.reason());
+        }
+    }
+
+    private void extendVisibility(List<Message> remaining) {
+        try {
+            List<ChangeMessageVisibilityBatchRequestEntry> entries = new java.util.ArrayList<>();
+            for (int i = 0; i < remaining.size(); i++) {
+                entries.add(ChangeMessageVisibilityBatchRequestEntry.builder()
+                        .id(String.valueOf(i))
+                        .receiptHandle(remaining.get(i).receiptHandle())
+                        .visibilityTimeout(props.visibilityTimeoutSeconds())
+                        .build());
+            }
+            sqs.changeMessageVisibilityBatch(ChangeMessageVisibilityBatchRequest.builder()
+                    .queueUrl(queues.queueUrl()).entries(entries).build());
+        } catch (RuntimeException e) {
+            log.warn("visibility 연장 실패: {}", e.toString());
         }
     }
 

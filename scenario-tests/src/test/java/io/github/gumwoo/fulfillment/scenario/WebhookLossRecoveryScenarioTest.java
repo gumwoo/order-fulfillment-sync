@@ -70,6 +70,8 @@ class WebhookLossRecoveryScenarioTest {
         assertThat(before.compared()).isEqualTo(ORDERS_PER_BATCH * 2);
         assertThat(before.mismatches()).as("복구 전에는 유실로 인한 불일치가 있어야 한다").isPositive();
 
+        ScenarioStack.passCurrentSecond();
+
         FailedWebhookRecoveryJob.Result failedResult = stack.bean(App.RECONCILER, FailedWebhookRecoveryJob.class).run();
         assertThat(failedResult.staleWatermark()).isFalse();
         assertThat(failedResult.failedWebhooks()).isPositive();
@@ -78,6 +80,8 @@ class WebhookLossRecoveryScenarioTest {
         // 실패 웹훅 조회만으로 실패 내역이 남은 구간(배치 1)은 완전히 복구되고, 흔적 없는 구간(배치 2)은 아직 남아 있어야 한다
         assertThat(mismatchedOptions(10_000)).as("배치 1: 실패 웹훅 경로로 전부 복구").isEmpty();
         assertThat(mismatchedOptions(20_000)).as("배치 2: 실패 내역이 없어 실패 웹훅 경로로는 복구되지 않는다").isNotEmpty();
+
+        ScenarioStack.passCurrentSecond();
 
         stack.bean(App.RECONCILER, StatusChangeRequeryJob.class).run();
         stack.awaitQueueDrained(Duration.ofSeconds(60));

@@ -102,6 +102,10 @@ public final class ScenarioStack {
         p.put("spring.main.banner-mode", "off");
         p.put("logging.level.root", "WARN");
         p.put("app.shopby.base-url", "http://localhost:" + mockPort);
+        p.put("app.tpl.base-url", "http://localhost:" + mockPort);
+        // 출고 요청 자동화(3PL 등록·상품준비중)는 그 기능을 검증하는 시나리오에서만 켠다
+        p.put("app.worker.fulfillment-enabled", "false");
+        p.put("app.worker.scheduling-enabled", "false");
         // 스케줄 작업은 테스트가 직접 호출한다
         p.put("app.reconciler.scheduling-enabled", "false");
         return p;
@@ -221,6 +225,18 @@ public final class ScenarioStack {
             zeroStreak[0] = empty ? zeroStreak[0] + 1 : 0;
             return zeroStreak[0] >= 3;
         });
+    }
+
+    /**
+     * 재조회는 현재 초를 제외한다(StatusChangeRequeryJob 주석). 방금 바뀐 주문을 재조회로 확인하려면
+     * 다음 초로 넘어갈 때까지 기다린다.
+     */
+    public static void passCurrentSecond() {
+        try {
+            Thread.sleep(1100 - (System.currentTimeMillis() % 1000) + 50);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /** 테스트 사이 상태 초기화: 모든 테이블 비우기, 큐 비우기 */

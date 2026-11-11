@@ -74,6 +74,11 @@ https://workspace-help.nhn-commerce.com/contents/recommended/webhook
   - 이 구간을 벗어나면 주기 재조회(5분)와 대사 배치가 잡는다.
 - `GET /orders`의 STATUS_CHANGE 조회 구간 최대 길이: 스펙에 기본값(3개월 전)만 있고 최대값은 없다.
   - watermark가 7일보다 오래된 경우의 복구(F-06)가 긴 구간을 조회한다.
+- 샵바이 `statusChangeYmdt`와 우리 서버 시계의 차이, 상태 변경이 조회에 보이기까지의 지연.
+  - 재조회는 구간 끝을 현재 초의 1초 전으로 자르고 마지막 페이지부터 읽는다.
+  - 이 차이가 1초를 넘으면 조회 중 구간에 새로 들어오는 주문이 생길 수 있다. 그러면 페이지 경계의 1건을 놓칠 수 있다.
+  - 놓친 건은 다음 실행(overlap 2분)과 대사 배치가 잡는다.
+- `PUT /orders/prepare-product`의 실패 오류 코드: 코드는 400만 "상태 변경 거절"로 보고 conflict로 남긴다. 나머지 4xx는 재전송 → DLQ.
 - 오류 응답 본문 형식: 코드는 HTTP 상태 코드만 본다.
 - `ratelimit-available-level`의 `EXHAUSTED` 외 값: 코드는 `EXHAUSTED`만 판단한다.
 

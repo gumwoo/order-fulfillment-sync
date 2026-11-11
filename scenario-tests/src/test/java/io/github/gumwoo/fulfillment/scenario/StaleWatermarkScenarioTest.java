@@ -39,6 +39,8 @@ class StaleWatermarkScenarioTest {
         mock.webhook(stack.inboundWebhookUrl(), 1.0, true, 1, 7);
         createOrders(30_000, 5);
 
+        ScenarioStack.passCurrentSecond();
+
         FailedWebhookRecoveryJob.Result result = stack.bean(App.RECONCILER, FailedWebhookRecoveryJob.class).run();
         stack.awaitQueueDrained(Duration.ofSeconds(60));
 
@@ -63,6 +65,8 @@ class StaleWatermarkScenarioTest {
         setWatermark(now.minusDays(6));
         mock.webhook(stack.inboundWebhookUrl(), 1.0, true, 1, 7);
         createOrders(31_000, 5);
+
+        ScenarioStack.passCurrentSecond();
 
         FailedWebhookRecoveryJob.Result result = stack.bean(App.RECONCILER, FailedWebhookRecoveryJob.class).run();
         stack.awaitQueueDrained(Duration.ofSeconds(60));

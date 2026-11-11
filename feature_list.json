@@ -5,7 +5,7 @@
   {"id": "F-04", "category": "ordering", "description": "DELIVERY_ING 이후에 PAY_DONE이 도착해도 상태가 되돌아가지 않고 conflict가 남는다", "verify": "OutOfOrderScenarioTest", "passes": true},
   {"id": "F-05", "category": "recovery", "description": "웹훅 30%를 버려도 실패 웹훅 조회와 STATUS_CHANGE 재조회 후 불일치가 0이 된다", "verify": "WebhookLossRecoveryScenarioTest", "passes": true},
   {"id": "F-06", "category": "recovery", "description": "watermark가 7일보다 오래되면 실패 웹훅 조회 대신 경보를 남기고 STATUS_CHANGE 재조회로 복구한다", "verify": "StaleWatermarkScenarioTest", "passes": true},
-  {"id": "F-07", "category": "rate-limit", "description": "인스턴스 3개가 동시에 호출해도 샵바이 mock 호출이 초당 80회를 넘지 않고, 429와 EXHAUSTED를 받아도 DLQ로 가는 메시지가 0건이다", "verify": "GlobalRateLimiterScenarioTest", "passes": false},
+  {"id": "F-07", "category": "rate-limit", "description": "인스턴스 3개가 동시에 호출해도 샵바이 mock 호출이 초당 80회를 넘지 않고, 429와 EXHAUSTED를 받아도 DLQ로 가는 메시지가 0건이다", "verify": "GlobalRateLimiterScenarioTest", "passes": true},
   {"id": "F-08", "category": "cancel", "description": "3PL 상태가 출고요청일 때 취소가 들어오면 3PL 취소 후 샵바이 취소가 완료된다", "verify": "CancelBeforeWorkScenarioTest", "passes": false},
   {"id": "F-09", "category": "cancel", "description": "출고작업(피킹 전)에 취소가 들어오면 샵바이 배송보류가 걸리고, 3PL 취소 성공 후 취소가 완료된다. 배송보류 일괄 실패 시 건별 재시도한다", "verify": "CancelDuringWorkScenarioTest", "passes": false},
   {"id": "F-10", "category": "cancel", "description": "피킹 이후 취소가 들어오면 이미출고 API가 호출되고 CS 회수 목록에 1건이 생긴다", "verify": "CancelAfterPickingScenarioTest", "passes": false},
