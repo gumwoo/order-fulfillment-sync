@@ -52,8 +52,19 @@ https://workspace-help.nhn-commerce.com/contents/recommended/webhook
   - 그 외: `requestChannelType`
   - 조회 API에 있는 `statusChangeYmdt`는 웹훅에 없다.
 - 웹훅 설정 method는 POST 또는 PUT.
+- 시각 필드 형식: `yyyy-MM-dd HH:mm:ss` (가이드 샘플 `"payYmdt": "2021-10-25 13:54:38"`, 주문 조회 스펙 예시 `2023-01-01 00:00:00`).
 
 ## 확인하지 못한 것 (샵바이)
+
+### mock 샵바이가 가정한 것 (실계정으로 확인 필요)
+
+- 클레임 상태만 바뀌어도 `statusChangeYmdt`가 갱신되어 STATUS_CHANGE 조회에 잡힌다.
+  - 이 가정이 틀리면 취소 신청 웹훅이 유실됐을 때 재조회로는 찾지 못한다.
+  - 대사 배치(클레임 비교)와 실패 웹훅 복구가 남은 방어선이다.
+- 조회 구간 `startYmdt`/`endYmdt`는 양 끝을 포함한다. 코드는 구간을 겹쳐 조회하므로(overlap) 어느 쪽이어도 빠지지 않는다.
+- `totalCount`는 조건에 맞는 주문 수이고, 페이지는 주문 단위다.
+- `GET /webhooks/failed`는 예외 발생 시각 내림차순이다.
+
 
 - `GET /webhooks/failed`의 `data` 필드 형식: 스펙 예시가 `"data"` 문자열뿐이다.
   - 그래서 코드는 `data`를 파싱하지 않는다.

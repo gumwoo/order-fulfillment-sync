@@ -50,6 +50,15 @@ public final class ScenarioStack {
     private final Map<App, Map<String, Object>> runningProps = new EnumMap<>(App.class);
     private JdbcTemplate jdbc;
     private SqsClient sqs;
+    private final int mockPort = freePort();
+
+    private static int freePort() {
+        try (java.net.ServerSocket s = new java.net.ServerSocket(0)) {
+            return s.getLocalPort();
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException(e);
+        }
+    }
 
     private ScenarioStack() {
     }
@@ -92,7 +101,19 @@ public final class ScenarioStack {
         p.put("app.sqs.visibility-timeout-seconds", "5");
         p.put("spring.main.banner-mode", "off");
         p.put("logging.level.root", "WARN");
+        p.put("app.shopby.base-url", "http://localhost:" + mockPort);
+        // 스케줄 작업은 테스트가 직접 호출한다
+        p.put("app.reconciler.scheduling-enabled", "false");
         return p;
+    }
+
+    /** mock 주소를 다른 앱 설정에 미리 넣기 위해 mock은 고정 포트로 띄운다 */
+    public int mockPort() {
+        return mockPort;
+    }
+
+    public String inboundWebhookUrl() {
+        return baseUrl(App.INBOUND).resolve("/webhooks/shopby").toString();
     }
 
     /**
@@ -124,6 +145,9 @@ public final class ScenarioStack {
 
     private void start(App app, Map<String, Object> extra) {
         Map<String, Object> props = baseProperties();
+        if (app == App.MOCK) {
+            props.put("server.port", String.valueOf(mockPort));
+        }
         props.putAll(extra);
         List<String> args = new ArrayList<>();
         props.forEach((k, v) -> args.add("--" + k + "=" + v));
@@ -179,6 +203,24 @@ public final class ScenarioStack {
 
     public String queueUrl(String name) {
         return sqs.getQueueUrl(GetQueueUrlRequest.builder().queueName(name).build()).queueUrl();
+    }
+
+    /**
+     * 처리가 끝날 때까지 기다린다: outbox에 PENDING이 없고, 큐(대기·처리 중·지연)가 연속 3번(1초 간격) 비어 있을 때.
+     * 큐 수치는 근사값(Approximate*)이라 한 번 0으로 끝내지 않는다.
+     */
+    public void awaitQueueDrained(java.time.Duration atMost) {
+        String url = queueUrl(QUEUE);
+        int[] zeroStreak = {0};
+        org.awaitility.Awaitility.await().atMost(atMost).pollInterval(java.time.Duration.ofSeconds(1)).until(() -> {
+            Long pending = jdbc.queryForObject(
+                    "select count(*) from information_schema.tables where table_schema='fulfillment' and table_name='outbox'",
+                    Long.class) == 0 ? 0L
+                    : jdbc.queryForObject("select count(*) from outbox where status = 'PENDING'", Long.class);
+            boolean empty = pending == 0 && SqsProbe.approximateTotal(sqs, url) == 0;
+            zeroStreak[0] = empty ? zeroStreak[0] + 1 : 0;
+            return zeroStreak[0] >= 3;
+        });
     }
 
     /** 테스트 사이 상태 초기화: 모든 테이블 비우기, 큐 비우기 */

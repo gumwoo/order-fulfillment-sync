@@ -65,10 +65,12 @@ final class ArchitectureRules {
     static ArchRule shopbyInternalsAreEncapsulated(String root) {
         return classes().that().resideInAPackage(root + ".infra.shopby..")
                 .and().doNotImplement(ShopbyClient.class)
+                // ShopbyConfig는 infra.config.ShopbyApiConfig가 @Import 하는 진입점이고 ShopbyClient 포트만 빈으로 내보낸다.
+                // 예외는 이 클래스 하나로 한정한다 (다른 설정 클래스가 생기면 규칙이 잡는다)
+                .and().doNotHaveFullyQualifiedName(root + ".infra.shopby.ShopbyConfig")
                 .should().onlyBeAccessed().byClassesThat().resideInAPackage(root + ".infra.shopby..")
                 .because("infra.shopby 내부 클래스(HTTP 호출, 토큰 버킷 등)를 밖에서 직접 쓰면 레이트 리미터를 우회한다. "
                         + "고치는 방법: ShopbyClient 구현체에 메서드를 추가하고 그것을 통해 호출한다")
-                // ShopbyClient 구현은 레이트 리미터 기능(F-07)에서 만든다. 그 전까지는 검사 대상 클래스가 없다.
                 // 규칙이 실제로 위반을 잡는지는 ArchitectureRulesViolationTest가 픽스처로 확인한다
                 .allowEmptyShould(true);
     }
@@ -78,8 +80,7 @@ final class ArchitectureRules {
                 .should().resideInAPackage(root + ".infra.shopby..")
                 .because("ShopbyClient 구현체가 infra.shopby 밖에 있으면 레이트 리미터를 거치지 않는 두 번째 출구가 생긴다. "
                         + "고치는 방법: 구현체를 infra.shopby로 옮기고 레이트 리미터를 거쳐 호출한다")
-                // 구현체는 F-07에서 만든다. 그때부터는 구현체가 반드시 infra.shopby에 있어야 하므로
-                // shopbyInternalsAreEncapsulated도 빈 집합으로 통과할 수 없다
+                // 픽스처 일부 검사(구현체가 없는 집합)를 위해 허용. 운영 코드에는 RestClientShopbyClient가 있다
                 .allowEmptyShould(true);
     }
 

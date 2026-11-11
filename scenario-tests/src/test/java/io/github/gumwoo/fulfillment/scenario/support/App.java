@@ -1,10 +1,16 @@
 package io.github.gumwoo.fulfillment.scenario.support;
 
 import io.github.gumwoo.fulfillment.inbound.InboundApiApplication;
+import io.github.gumwoo.fulfillment.mock.MockServersApplication;
+import io.github.gumwoo.fulfillment.reconciler.ReconcilerApplication;
+import io.github.gumwoo.fulfillment.worker.WorkerApplication;
 
-/** 시나리오 테스트가 띄우는 실행 모듈. 기능이 늘면 여기에 추가한다. */
+/** 시나리오 테스트가 띄우는 실행 모듈. 선언 순서대로 켠다 (mock이 먼저). */
 public enum App {
-    INBOUND(InboundApiApplication.class, InboundApiApplication.CONFIG_NAME);
+    MOCK(MockServersApplication.class, MockServersApplication.CONFIG_NAME),
+    INBOUND(InboundApiApplication.class, InboundApiApplication.CONFIG_NAME),
+    WORKER(WorkerApplication.class, WorkerApplication.CONFIG_NAME),
+    RECONCILER(ReconcilerApplication.class, ReconcilerApplication.CONFIG_NAME);
 
     final Class<?> mainClass;
     final String configName;

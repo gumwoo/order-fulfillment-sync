@@ -1,0 +1,31 @@
+# 기본값은 docker-compose.yml 로컬 환경 기준이다
+spring:
+  application:
+    name: reconciler
+  main:
+    web-application-type: none
+  datasource:
+    url: jdbc:mysql://localhost:3306/fulfillment?serverTimezone=Asia/Seoul
+    username: fulfillment
+    password: fulfillment
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+app:
+  sqs:
+    endpoint: http://localhost:4566
+    region: ap-northeast-2
+    create-queues: true
+  shopby:
+    base-url: http://localhost:8090
+  reconciler:
+    scheduling-enabled: true
+    requery-interval: PT5M
+    requery-overlap: PT2M
+    initial-lookback: PT1H

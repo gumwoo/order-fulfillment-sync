@@ -2,6 +2,36 @@
 
 세션이 끝날 때마다 위에 추가한다. 형식: 날짜 / 한 일 / 확인한 것 / 남은 것 / 다음 세션이 먼저 할 일.
 
+## 2026-11-11 (4) F-03 멱등 반영
+
+- 한 일
+  - core: `OrderStatus`(우선순위), `OrderStatusChange`(멱등 키 sha256), `StatusTransitionPolicy`(ADR-0003),
+    `ApplyStatusChangeService`(한 트랜잭션: processed_event INSERT IGNORE → 판정 → 반영+이력 또는 conflict)
+  - 포트: `ShopbyClient`(이후 기능 메서드까지 정의), `OrderSyncStore`, `TransactionRunner`
+  - infra
+    - JPA 구현(`order_line_state` @Version, `status_history`, `conflict`, `sync_watermark`)
+    - 샵바이 어댑터: Redis Lua 토큰 버킷(10 + 70/s, Redis TIME), EXHAUSTED·429 처리
+  - worker: SQS 소비 → 라우터 → 반영, 처리 통계(`ProcessingStats`)
+  - reconciler: STATUS_CHANGE 재조회 작업(watermark, overlap 2분, totalCount가 바뀌면 다시 조회)
+  - mock-servers: 샵바이 mock
+    - 공개 스펙 API: 주문 조회, 실패 웹훅, 상품준비중, 배송보류, 송장 일괄 반영, 클레임 승인, 이미출고
+    - 제어 API, 호출 기록·429 주입 필터
+  - 리뷰(Sonnet) 지적 반영
+    - 페이징 누락
+    - 파싱 실패 메시지를 지우지 않고 DLQ로
+    - 단계 시각이 과거로 되돌아가지 않게
+    - 클레임 철회 시 클레임 정보 지우기
+    - mock 가정을 external-facts에 "미확인"으로 기록
+    - ArchUnit 예외를 ShopbyConfig 하나로 한정
+- 확인한 것
+  - `./gradlew check` 통과 (StatusTransitionPolicyTest 포함)
+  - `scenarioTest --tests '*IdempotencyScenarioTest'`: 2개 통과
+    - 웹훅 3회 + 재조회 1회: APPLIED 1, DUPLICATE 2, POLLING DUPLICATE 1, status_history 1
+- 확인하지 못한 것
+  - 실제 샵바이에서 웹훅과 조회 응답의 단계 시각이 같은지 (mock은 같은 값으로 직렬화)
+  - 같은 라인의 동시 경합을 시나리오로 검사하지는 않았다 (PK·@Version 충돌 시 롤백 후 재전송 경로)
+- 다음: F-04 (테스트 작성됨), F-05·F-06 (코드와 테스트 작성됨, 리뷰 전)
+
 ## 2026-11-11 (3) F-02 웹훅 수신
 
 - 한 일

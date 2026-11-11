@@ -6,8 +6,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-json'
     implementation 'org.springframework:spring-web'
-    implementation platform('software.amazon.awssdk:bom:2.57.13')
-    implementation 'software.amazon.awssdk:sqs'
+    // worker가 소비 루프 설정에 SqsClient 타입을 쓰므로 api로 노출한다
+    api platform('software.amazon.awssdk:bom:2.57.13')
+    api 'software.amazon.awssdk:sqs'
     runtimeOnly 'com.mysql:mysql-connector-j'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
