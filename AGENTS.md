@@ -38,6 +38,7 @@
 ./gradlew check                    # 빌드 + 단위 테스트 + ArchUnit (Stop 훅이 실행, 빠른 검사)
 ./gradlew scenarioTest             # 시나리오 테스트 F-02~F-13 (Testcontainers, 느림, 기능 완료 시 실행)
 ./gradlew scenarioTest --tests '*IdempotencyScenarioTest'   # feature_list의 verify 하나만
+./gradlew :scenario-tests:measure    # 장애 주입·부하 측정 (k6 필요), 결과 scenario-tests/build/measurements/
 bash scripts/harness/doc-lint.sh   # 문서 링크, ADR 형식, feature_list 검사
 bash scripts/harness/scope-check.sh
 docker compose up -d               # MySQL, Redis, LocalStack(SQS)

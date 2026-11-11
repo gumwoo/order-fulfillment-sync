@@ -1,6 +1,6 @@
 # 주문·출고 동기화 허브 설계
 
-- 상태: 초안 (2026-11-11)
+- 상태: 구현 반영 (2026-11-11). 구현 중 바뀐 결정은 ADR-0006~0009에 있다.
 - 근거 문서: [external-facts.md](../references/external-facts.md)
 
 ## 1. 풀려는 문제
@@ -59,7 +59,7 @@ DEPOSIT_WAIT < PAY_DONE < PRODUCT_PREPARE < DELIVERY_PREPARE < DELIVERY_ING < DE
 
 - 같은 순위면 단계별 시각(payYmdt, releaseReadyYmdt, releaseYmdt 등)이 더 늦은 쪽을 채택한다.
 - 되돌아가는 전이(예: DELIVERY_ING → PRODUCT_PREPARE)가 오면 반영하지 않고 `conflict`로 남긴다.
-- FIFO 그룹 키를 주문번호로 할지 옵션번호로 할지는 처리량과 동시성 비교 후 ADR로 확정한다 (미결).
+- SQS는 Standard 큐를 쓰고 FIFO는 쓰지 않는다 ([ADR-0006](../adr/0006-sqs-standard-queue.md)). 같은 라인의 동시 처리는 낙관적 락으로 막는다.
 
 ### 4.4 복구 경로 ([ADR-0002](../adr/0002-polling-is-source-of-truth.md))
 
@@ -75,7 +75,8 @@ DEPOSIT_WAIT < PAY_DONE < PRODUCT_PREPARE < DELIVERY_PREPARE < DELIVERY_ING < DE
 
 - Redis Lua 토큰 버킷 하나를 모든 인스턴스가 함께 쓴다. 한도는 80/s로 여유를 둔다.
 - 응답 헤더 `ratelimit-available-level: EXHAUSTED`가 오면 버킷을 비우고 잠시 멈춘다.
-- 429는 실패가 아니라 대기 신호다. 메시지 visibility timeout을 늘려 다시 받고, receive count에 포함되지 않게 별도 카운트로 관리한다.
+- 429는 실패가 아니라 대기 신호다. 메시지를 지우고 지연을 건 새 메시지로 재발행해 receive count를 올리지 않는다 ([ADR-0007](../adr/0007-rate-limit-retry-by-republish.md)).
+- 버킷 10 + 초당 70 충전으로 어떤 1초 구간에서도 80회 이하가 되게 한다.
 
 ### 4.6 취소·출고 경합 ([ADR-0005](../adr/0005-cancel-vs-shipment-flow.md))
 
@@ -92,20 +93,35 @@ DEPOSIT_WAIT < PAY_DONE < PRODUCT_PREPARE < DELIVERY_PREPARE < DELIVERY_ING < DE
 
 ### 4.7 3PL mock (파스토 규칙)
 
-- 주문 수집 1분, 취소 수집 20분, 송장 15분 주기 폴링을 흉내낸다 (시간 배율 조정 가능).
+- 파스토의 실제 API는 공개 자료로 확인하지 못했다. 규칙만 따르고, API 형태는 이 프로젝트가 정했다.
+  - `POST /tpl/orders`: 출고요청 등록. 옵션명 매핑이 없으면 422
+  - `POST /tpl/orders/{no}/cancel`: 출고요청은 무료, 출고작업은 1,000원, 피킹 이후는 409
+  - `GET /tpl/events?afterSeq=`: 상태 변경·송장 발급 이벤트
+- 허브가 출고요청을 보내고, 3PL 이벤트를 주기적으로 가져온다(송장 주기 폴링 흉내).
+  - 3PL 상태는 앞으로만 바뀐다.
 - 출고 상태: 출고요청 → 출고작업 → 피킹 → 출고완료.
 - 옵션명이 매핑표에 없으면 수집 실패 → `unlinked`(미연동)로 기록하고 사유 코드를 남긴다.
 - 장애 스위치: 응답 지연, 타임아웃, 송장 늦게 주기(순서 역전).
 
 ### 4.8 지연 재처리
 
-출고 확정이 송장보다 먼저 오는 경우(올리브영 WMS 글과 같은 상황) 바로 실패시키지 않고 지연 큐에 넣어 N분 뒤 다시 처리한다. 최대 횟수를 넘으면 `conflict`로 보내고 Slack 알림을 10분 단위로 묶어 보낸다.
+출고 확정이 송장보다 먼저 오는 경우(올리브영 WMS 글과 같은 상황)는 바로 실패시키지 않는다.
+- SQS 메시지 타이머로 N분(기본 5분) 뒤 다시 처리한다.
+- 최대 횟수(기본 6회)를 넘으면 `conflict`와 경보를 남긴다.
+- 경보는 10분마다 알림 1건으로 묶는다. 실제 Slack 발송은 범위 밖이라 `notification` 테이블까지만 만든다.
+
+송장 반영은 배송번호 단위로 한다.
+- 배송의 모든 옵션이 출고완료이고 송장이 같을 때만 보낸다. 100건씩 보내고, 실패한 배송만 다시 보낸다.
+- 5회 실패하면 conflict와 경보를 남기고 멈춘다.
 
 ### 4.9 CS 어드민 API
 
 - 미연동 목록 (사유 코드: OPTION_NOT_MAPPED, PRODUCT_NOT_FOUND ...)
 - 취소·출고 충돌 목록
 - 재처리: 같은 요청을 여러 번 눌러도 한 번만 처리 (요청 ID 멱등)
+  - 같은 요청 ID는 결과만 돌려준다(실패한 요청도). 다시 시도하려면 새 요청 ID를 쓴다.
+  - 다른 요청 ID로 동시에 눌러도 미연동 행의 "처리 중" 표시로 한 요청만 처리한다. 5분이 지나면 끊긴 처리로 본다.
+  - 외부 호출(3PL, 샵바이)은 행 잠금 밖에서 하고 단계마다 커밋한다.
 - 처리 이력: 누가 언제 무엇을 했는지
 
 ## 5. 데이터 모델 (초안)
@@ -131,10 +147,9 @@ DEPOSIT_WAIT < PAY_DONE < PRODUCT_PREPARE < DELIVERY_PREPARE < DELIVERY_ING < DE
 | 피킹 이후 취소 | 이미출고 처리 + CS 목록 |
 
 잴 지표: 불일치 건수 추이, 복구까지 걸린 시간, 웹훅 누락률과 복구 경로로 되찾은 건수, 취소 후 출고 건수, DLQ 건수.
-**아직 측정 전이다. 숫자는 측정 후에만 문서와 포트폴리오에 넣는다.**
+측정 결과는 [docs/measurements.md](../measurements.md)에 있다 (mock, 로컬 PC 기준 실측값).
 
 ## 7. 미결 사항
 
-- FIFO 그룹 키: 주문번호 vs 옵션번호
 - 실제 운영 환경의 3PL과 연동 방식 (확인 불가, 공개 자료 없음)
 - 샵바이 실제 응답이 스펙과 다를 수 있는 부분 (실계정 없이 검증 불가)

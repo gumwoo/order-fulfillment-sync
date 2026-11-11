@@ -32,9 +32,32 @@ tasks.register('scenarioTest', Test) {
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     useJUnitPlatform()
+    exclude '**/measure/**'
+
     maxParallelForks = 1
     testLogging {
         events 'failed'
+        exceptionFormat 'full'
+    }
+}
+
+// 장애 주입 측정 (실행 계획 0001 완료 조건). 결과: scenario-tests/build/measurements/*.json
+// 예: ./gradlew :scenario-tests:measure --tests "*수신_부하_k6" -Dk6.vus=20 -Dk6.duration=30s
+tasks.register('measure', Test) {
+    description = '장애 주입·부하 측정. k6가 PATH에 있어야 한다(수신 부하 측정).'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching '*.measure.*'
+    }
+    systemProperty 'k6.vus', System.getProperty('k6.vus', '20')
+    systemProperty 'k6.duration', System.getProperty('k6.duration', '30s')
+    maxParallelForks = 1
+    outputs.upToDateWhen { false }
+    testLogging {
+        events 'failed', 'standard_out'
         exceptionFormat 'full'
     }
 }

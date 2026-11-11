@@ -2,4 +2,4 @@
 
 | 문서 | 상태 | 마지막 수정 |
 |---|---|---|
-| [order-sync-design.md](order-sync-design.md) | 초안 | 2026-11-11 |
+| [order-sync-design.md](order-sync-design.md) | 구현 반영 | 2026-11-11 |
