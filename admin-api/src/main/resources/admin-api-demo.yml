@@ -1,0 +1,4 @@
+# 데모 설정 (spring.profiles.active=demo)
+app:
+  admin:
+    demo-enabled: true

@@ -33,7 +33,8 @@ admin-api ───┘
 - `inbound-api`: 웹훅 수신 → 원본 저장 + outbox → SQS
 - `worker`: 상태 반영, 출고 요청, 취소 처리, 3PL 이벤트, 송장 반영
 - `reconciler`: 실패 웹훅 복구, STATUS_CHANGE 재조회, 대사 배치
-- `admin-api`: CS 어드민 API (미연동·충돌·회수 목록, 재처리, 이력). 화면은 범위 밖
+- `admin-api`: CS 어드민 API (미연동·충돌·회수 목록, 재처리, 이력), 데모용 현황·대사 이력
+- `frontend`: 데모 화면 (React + TypeScript + Vite). 장애 데모 대시보드와 CS 어드민
 - 의존 규칙은 ArchUnit으로 검사합니다 ([ARCHITECTURE.md](ARCHITECTURE.md)).
 
 설계 전체는 [docs/design-docs/order-sync-design.md](docs/design-docs/order-sync-design.md), 결정 이유는 [docs/adr/](docs/adr/README.md)에 있습니다.
@@ -51,6 +52,54 @@ docker compose up -d                 # MySQL 8.4, Redis 7.4, LocalStack 4.14(SQS
 ./gradlew :admin-api:bootRun         # 8083
 ```
 
+## 데모 화면
+
+인프라, 앱 5개(`demo` 프로필: 재조회·대사 주기를 짧게), 프론트 개발 서버를 한 번에 띄웁니다. 요구: Node 20 이상, Docker 실행 중.
+
+```bash
+bash scripts/demo.sh                    # http://localhost:5173
+MOCK_PORT=28090 FRONT_PORT=5180 bash scripts/demo.sh   # 포트를 다른 프로그램이 쓰고 있을 때
+bash scripts/demo.sh stop               # 남은 앱 프로세스 정리
+```
+
+화면 문구는 운영자 말로 썼습니다. 원래 기술 용어는 마우스를 올리면 보입니다. 예를 들어 "자동 처리 실패"에 올리면 "DLQ"가 보입니다.
+
+**동기화 현황**: "장애 테스트"로 문제 상황을 만들고, 주문 상태가 다시 맞춰지는 과정을 봅니다.
+- 자주 쓰는 상황
+  - 주문 알림이 사라짐 (웹훅 유실)
+  - 쇼핑몰 요청 과다 (429)
+  - 창고에 없는 옵션 (3PL 미연동)
+  - 출고 뒤 고객 취소
+- 직접 조합할 수도 있습니다.
+- 복구 과정 그래프: 쇼핑몰과 비교(대사)할 때마다 상태가 다른 주문 수를 그립니다.
+  - 장애를 일으킨 시점은 세로선, 상태가 달랐던 구간은 옅은 빨강으로 표시합니다.
+  - 그래프 위에 "쇼핑몰 요청 제한 30회, 주문 알림 30% 누락 → 상태가 다른 주문 최대 42건 → 65초 만에 모두 맞춰짐" 같은 요약이 붙습니다.
+- 지표: 쇼핑몰과 같은 주문, 자동 처리 대기, 자동 처리 실패, 사람이 처리할 일
+- 단계별 주문 수: 쇼핑몰 기준과 우리 시스템을 나란히 보여 주고, 다르면 빨간 숫자로 표시합니다.
+
+**사람이 처리할 일**: 시스템이 스스로 풀지 못한 주문을 봅니다. 창고 등록 실패, 확인 필요, 회수 안내, 처리 이력으로 나눕니다.
+- 창고 등록 실패는 골라서 창고에 다시 등록합니다. 건마다 `Idempotency-Key`를 새로 만들어 보냅니다.
+- 확인 필요는 사유와 함께 운영자가 할 일을 보여 줍니다.
+
+캡처 조건: 쇼핑몰 요청 제한 30회를 건 뒤 주문 50건을 넣었습니다(알림 30% 누락, 같은 알림 2번 더, 창고에 없는 옵션 10%). 로컬 PC와 mock 기준입니다.
+같은 조건으로 여러 번 돌리면 다시 맞춰지기까지 30초에서 136초가 걸렸습니다.
+
+| 맞추는 중 | 모두 맞춰짐: 자동 처리 실패 0, 확인 필요 0 |
+|---|---|
+| ![맞추는 중](docs/images/demo-dashboard-recovering.png) | ![모두 맞춰짐](docs/images/demo-dashboard-recovered.png) |
+
+| 장애 테스트 | 창고 등록 실패 목록 |
+|---|---|
+| ![장애 테스트](docs/images/demo-scenario-panel.png) | ![창고 등록 실패](docs/images/demo-admin-unlinked.png) |
+
+창고 옵션 설정을 고친 뒤 5건을 창고에 다시 등록했습니다. 1건은 직접 해결했고, 4건은 자동 재시도가 먼저 끝내 "이미 해결됨"으로 나왔습니다 ([캡처](docs/images/demo-admin-reprocessed.png)).
+
+화면 생김새를 정한 근거는 [docs/design-docs/demo-ui-references.md](docs/design-docs/demo-ui-references.md)에 있습니다. Tremor 대시보드 템플릿, Vercel Observability, Anthropic frontend-design 스킬을 참고했습니다.
+
+```bash
+cd frontend && npm test                 # 화면 단위 테스트 (vitest, API는 가짜 fetch)
+```
+
 ## 테스트와 측정
 
 ```bash
@@ -63,7 +112,7 @@ docker compose up -d                 # MySQL 8.4, Redis 7.4, LocalStack 4.14(SQS
 
 ## 범위 밖과 알려진 한계
 
-- 실제 샵바이·파스토 연동, 실제 Slack 발송(알림은 `notification` 테이블까지), 재고·반품·교환, 클라우드 배포, 프론트엔드
+- 실제 샵바이·파스토 연동, 실제 Slack 발송(알림은 `notification` 테이블까지), 재고·반품·교환, 클라우드 배포, 일반 사용자용 프론트엔드 (데모 화면만 있음)
 - CS 어드민 인증: 처리자를 `X-Actor` 헤더로 받습니다. 위조할 수 있으므로 이력의 "누가"는 신뢰할 수 없습니다(인증은 범위 밖).
 - 확인하지 못한 외부 동작은 [external-facts.md](docs/references/external-facts.md)의 "확인하지 못한 것"에 있습니다.
 - "여러 인스턴스"는 한 JVM의 Spring 컨텍스트 여러 개로 흉내 냈습니다. 별도 프로세스로는 검증하지 않았습니다.

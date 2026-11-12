@@ -19,6 +19,12 @@ spring:
       port: 6379
 
 app:
+  sqs:
+    endpoint: http://localhost:4566
+    region: ap-northeast-2
+    create-queues: true
+  admin:
+    demo-enabled: false
   shopby:
     base-url: http://localhost:8090
   tpl:

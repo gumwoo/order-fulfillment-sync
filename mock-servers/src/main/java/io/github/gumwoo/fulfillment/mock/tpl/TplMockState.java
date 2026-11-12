@@ -139,6 +139,18 @@ public class TplMockState {
         events.add(new Event(++seq, type, o.orderProductOptionNo, o.status, o.invoiceNo, o.deliveryCompanyType));
     }
 
+    /** 데모: 해당 상태의 주문옵션 번호 */
+    public synchronized List<Long> optionNosByStatus(String status) {
+        return orders.values().stream().filter(o -> status.equals(o.status)).map(o -> o.orderProductOptionNo).sorted().toList();
+    }
+
+    /** 데모: 상태별 건수 */
+    public synchronized Map<String, Long> countByStatus() {
+        Map<String, Long> m = new LinkedHashMap<>();
+        orders.values().forEach(o -> m.merge(o.status, 1L, Long::sum));
+        return m;
+    }
+
     public synchronized List<Event> eventsAfter(long afterSeq, int limit) {
         return events.stream().filter(e -> e.seq() > afterSeq).limit(limit).toList();
     }

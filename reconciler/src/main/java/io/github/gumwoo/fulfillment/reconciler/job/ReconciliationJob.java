@@ -31,14 +31,17 @@ public class ReconciliationJob {
     private final ShopbyClient shopby;
     private final OrderLineStateRepository lines;
     private final MismatchRepository mismatches;
+    private final io.github.gumwoo.fulfillment.infra.persistence.ReconciliationRunRepository runs;
     private final Clock clock;
     private final Duration lookback;
 
     public ReconciliationJob(ShopbyClient shopby, OrderLineStateRepository lines, MismatchRepository mismatches,
+                             io.github.gumwoo.fulfillment.infra.persistence.ReconciliationRunRepository runs,
                              Clock clock, @Value("${app.reconciler.reconcile-lookback:P2D}") Duration lookback) {
         this.shopby = shopby;
         this.lines = lines;
         this.mismatches = mismatches;
+        this.runs = runs;
         this.clock = clock;
         this.lookback = lookback;
     }
@@ -70,6 +73,7 @@ public class ReconciliationJob {
             page++;
         }
         mismatches.saveAll(found);
+        runs.save(new io.github.gumwoo.fulfillment.infra.persistence.ReconciliationRunEntity(runId, now, compared, found.size()));
         return new Result(runId, compared, found.size());
     }
 

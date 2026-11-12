@@ -5,7 +5,7 @@
 
 ## 먼저 읽을 것 (세션 시작 순서)
 
-0. 코드가 아직 없다면 [docs/exec-plans/active/kickoff.md](docs/exec-plans/active/kickoff.md)부터 읽는다.
+0. 프로젝트 배경은 [kickoff.md](docs/exec-plans/completed/kickoff.md)에 있다 (0001 시작 시점 문서).
 1. [progress.md](progress.md): 직전 세션이 무엇을 했고 무엇이 남았는지
 2. `git log --oneline -20`
 3. [feature_list.json](feature_list.json): `passes:false` 중 우선순위가 가장 높은 것 하나를 고른다
@@ -19,7 +19,7 @@
 | 전체 설계와 시나리오 | [docs/design-docs/order-sync-design.md](docs/design-docs/order-sync-design.md) |
 | 왜 이렇게 정했는지 | [docs/adr/](docs/adr/README.md) |
 | 샵바이·SQS·파스토 공식 제약 | [docs/references/external-facts.md](docs/references/external-facts.md) |
-| 지금 진행 중인 계획과 수정 허용 범위 | [docs/exec-plans/active/](docs/exec-plans/active/0001-mvp.md) |
+| 지금 진행 중인 계획과 수정 허용 범위 | [docs/exec-plans/active/](docs/exec-plans/active/0002-demo-frontend.md) (끝난 계획: [completed/](docs/exec-plans/completed/0001-mvp.md)) |
 | 이 하네스를 왜 이렇게 만들었는지 | [docs/harness/harness-design.md](docs/harness/harness-design.md) |
 
 ## 작업 규칙

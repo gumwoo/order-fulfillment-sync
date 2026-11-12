@@ -1,0 +1,9 @@
+# 데모 설정 (spring.profiles.active=demo): 화면에서 흐름이 보이도록 주기를 짧게 한다
+app:
+  worker:
+    tpl-poll-interval: PT3S
+    invoice-sync-interval: PT3S
+    hold-interval: PT3S
+    alert-bundle-interval: PT30S
+    release-wait: PT5S
+    max-release-waits: 6

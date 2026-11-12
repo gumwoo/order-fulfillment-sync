@@ -1,0 +1,7 @@
+# 데모 설정 (spring.profiles.active=demo): 복구 경로와 대사를 짧은 주기로 돌려 불일치가 0으로 수렴하는 과정을 보여 준다
+app:
+  reconciler:
+    requery-interval: PT15S
+    failed-webhook-interval: PT10S
+    reconcile-cron: "*/5 * * * * *"
+    failed-webhook-window-before: PT1M
