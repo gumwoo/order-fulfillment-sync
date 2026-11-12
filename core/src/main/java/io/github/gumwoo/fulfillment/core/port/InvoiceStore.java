@@ -31,6 +31,12 @@ public interface InvoiceStore {
 
     void markSynced(long shippingNo, LocalDateTime at);
 
+    /**
+     * 샵바이 쪽에 이미 반영됐는지 우리 주문 라인으로 본다. 주문 라인은 웹훅·재조회로 받은 샵바이 상태다 (ADR-0002).
+     * 배송의 모든 라인(취소 완료 제외)이 출고 이후 상태이고 송장이 같으면 true.
+     */
+    boolean alreadyApplied(long shippingNo, String invoiceNo);
+
     /** @return 이 배송의 누적 실패 횟수 */
     int markSyncFailed(long shippingNo, LocalDateTime at);
 

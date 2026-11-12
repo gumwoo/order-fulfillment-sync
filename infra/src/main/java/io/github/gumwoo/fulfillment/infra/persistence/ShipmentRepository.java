@@ -19,6 +19,11 @@ public interface ShipmentRepository extends JpaRepository<ShipmentEntity, Long> 
     @Query(value = "SELECT * FROM shipment WHERE delivery_no = :deliveryNo FOR UPDATE SKIP LOCKED", nativeQuery = true)
     List<ShipmentEntity> lockByDeliveryNo(@org.springframework.data.repository.query.Param("deliveryNo") Long deliveryNo);
 
+    /** SELECT ... FOR UPDATE */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from ShipmentEntity s where s.orderProductOptionNo = :no")
+    java.util.Optional<ShipmentEntity> lockById(@org.springframework.data.repository.query.Param("no") long no);
+
     /** 같은 옵션을 두 소비자가 동시에 처음 처리해도 PK 충돌 없이 행 하나만 생기게 */
     @org.springframework.data.jpa.repository.Modifying
     @Query(value = "INSERT IGNORE INTO shipment (order_product_option_no, invoice_sync_failures, updated_at, version) "

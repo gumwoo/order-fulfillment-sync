@@ -21,6 +21,8 @@ import java.util.stream.Collectors;
  * <ul>
  *   <li>대상 배송을 잠근 채 보내고 기록한다. 인스턴스가 여러 대여도 같은 배송을 동시에 보내지 않는다.</li>
  *   <li>응답이 요청과 맞지 않으면(실패 수 불일치, 보내지 않은 배송번호) 전부 실패로 보고 다시 보낸다.</li>
+ *   <li>실패로 돌아온 배송이 이미 샵바이에 반영돼 있으면(우리 주문 라인이 배송중이고 송장이 같으면) 반영 완료로 본다.
+ *       앞선 요청이 반영됐는데 응답을 잃으면 다시 보낸 요청이 "이미 배송중"으로 거절되기 때문이다.</li>
  *   <li>같은 배송이 {@value #MAX_FAILURES}번 실패하면(예: 취소·배송보류로 거절) conflict와 경보를 남기고 더 보내지 않는다.</li>
  * </ul>
  */
@@ -72,6 +74,9 @@ public class InvoiceSyncService {
             }
             LocalDateTime now = LocalDateTime.now(clock);
             for (PendingInvoice p : pending) {
+                if (failed.contains(p.shippingNo()) && store.alreadyApplied(p.shippingNo(), p.invoiceNo())) {
+                    failed.remove(p.shippingNo());
+                }
                 if (failed.contains(p.shippingNo())) {
                     int n = store.markSyncFailed(p.shippingNo(), now);
                     if (n >= MAX_FAILURES) {

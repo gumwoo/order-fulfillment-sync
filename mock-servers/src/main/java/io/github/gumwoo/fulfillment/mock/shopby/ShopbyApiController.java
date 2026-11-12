@@ -136,7 +136,7 @@ public class ShopbyApiController {
 
     /** 송장 일괄 반영 (배송번호 기준). 최대 100건, 건별 부분 실패 */
     @PutMapping("/orders/change-status/by-shipping-no")
-    public ResponseEntity<JsonNode> changeStatusByShippingNo(@RequestBody JsonNode body) {
+    public ResponseEntity<?> changeStatusByShippingNo(@RequestBody JsonNode body) {
         List<ObjectNode> changed = new ArrayList<>();
         LocalDateTime now = state.now();
         ResponseEntity<JsonNode> res;
@@ -144,6 +144,11 @@ public class ShopbyApiController {
             res = changeStatusByShippingNoLocked(body, changed, now);
         }
         webhooks.send(changed, now);
+        if (faults.consumeInvoiceResponseLoss()) {
+            // 반영은 끝났는데 호출자는 응답을 읽지 못한다 (데모 전체 실행에서 본 application/octet-stream 오류와 같은 모양)
+            return ResponseEntity.ok().contentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM)
+                    .body(new byte[] {0x1f, (byte) 0x8b, 0});
+        }
         return res;
     }
 

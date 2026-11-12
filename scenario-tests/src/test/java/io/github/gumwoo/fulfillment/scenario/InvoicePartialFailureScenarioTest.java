@@ -1,6 +1,7 @@
 package io.github.gumwoo.fulfillment.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -75,6 +76,31 @@ class InvoicePartialFailureScenarioTest {
                 assertThat(flow.stack().jdbc().queryForObject(
                         "select count(*) from order_line_state where status = 'DELIVERY_ING' and invoice_no is not null",
                         Long.class)).isEqualTo(100L));
+    }
+
+    @Test
+    void 반영됐는데_응답을_잃으면_다시_보낼_때_거절돼도_반영_완료로_끝낸다() {
+        mock.loseInvoiceResponseOnce();
+        InvoiceSyncService sync = flow.stack().bean(App.WORKER, InvoiceSyncService.class);
+
+        assertThatThrownBy(sync::syncPending).as("응답을 읽지 못해 실패로 보이고 트랜잭션이 되돌아간다")
+                .isInstanceOf(RuntimeException.class);
+        for (long no : OPTIONS) {
+            assertThat(mock.option(no).path("orderStatusType").asText()).as("샵바이에는 반영됐다").isEqualTo("DELIVERY_ING");
+        }
+        // 샵바이 웹훅으로 우리 라인이 배송중·송장을 받는다
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() ->
+                assertThat(flow.stack().jdbc().queryForObject(
+                        "select count(*) from order_line_state where status = 'DELIVERY_ING' and invoice_no is not null",
+                        Long.class)).isEqualTo(100L));
+
+        InvoiceSyncService.Result retry = sync.syncPending();
+
+        assertThat(retry).as("다시 보낸 100건은 모두 '이미 배송중'으로 거절되지만 반영 완료로 본다")
+                .isEqualTo(new InvoiceSyncService.Result(100, 100, 0));
+        assertThat(sync.syncPending().sent()).isZero();
+        assertThat(flow.stack().jdbc().queryForObject(
+                "select count(*) from conflict where reason_code = 'INVOICE_SYNC_FAILED'", Long.class)).isZero();
     }
 
     private static Set<Long> toSet(JsonNode arr) {

@@ -90,30 +90,65 @@ public class ShipmentRequestService {
                 return Result.SKIPPED;
             }
         }
-        // 3PL 등록 사이에 취소 신청이 들어왔을 수 있으므로 상품준비중 변경 직전에 다시 읽는다
-        OrderLineState latest = tx.inTransaction(() -> orders.findLine(orderProductOptionNo).orElse(line));
-        if (latest.orderStatus() == OrderStatus.PAY_DONE && !latest.hasClaim()) {
-            try {
-                shopby.prepareProduct(List.of(orderProductOptionNo));
-            } catch (ShopbyClient.ApiException e) {
-                if (e.status() != 400) {
-                    // 인증·권한·서버 오류 등: 처리했다고 표시하면 조용히 유실된다. 예외로 재전송 → DLQ에서 보이게 한다
-                    throw e;
-                }
-                // 400: 샵바이가 상태 변경을 거절했다(이미 결제완료가 아님 등, 오류 코드는 미확인).
-                // 같은 요청을 반복해도 같으므로 멈추고 사람이 보게 conflict로 남긴다
+        try {
+            return prepareUnderLock(orderProductOptionNo, line);
+        } catch (RuntimeException e) {
+            if (outcomeUnknown(e)) {
+                // 샵바이에는 반영됐는데 응답만 잃었을 수 있다. 잠금 트랜잭션은 되돌아갔으니 따로 남긴다
                 LocalDateTime at = LocalDateTime.now(clock);
                 tx.inTransaction(() -> {
-                    conflicts.record(String.valueOf(orderProductOptionNo), CONFLICT_PREPARE_REJECTED, e.getMessage(), at);
+                    shipments.markPrepareOutcomeUnknown(orderProductOptionNo, at);
                     return null;
                 });
             }
+            throw e;
         }
-        LocalDateTime now = LocalDateTime.now(clock);
-        tx.inTransaction(() -> {
-            shipments.markPrepared(orderProductOptionNo, now);
-            return null;
+    }
+
+    /** 429와 4xx는 샵바이가 처리하지 않았다는 뜻이다. 그 밖(타임아웃, 연결 끊김, 5xx)은 반영 여부를 모른다 */
+    private static boolean outcomeUnknown(RuntimeException e) {
+        if (e instanceof ShopbyClient.RateLimitedException) {
+            return false;
+        }
+        if (e instanceof ShopbyClient.ApiException api) {
+            return api.status() >= 500;
+        }
+        return true;
+    }
+
+    /**
+     * 상품준비중 변경은 출고 행을 잠근 채 한다 (ADR-0010). 같은 옵션을 웹훅·중복 웹훅·재조회가 동시에 처리하면
+     * 둘 다 결제완료로 읽고 둘 다 호출해, 늦은 쪽이 400을 받아 가짜 conflict가 생기기 때문이다.
+     * 잠금을 얻은 뒤 이미 끝났으면 호출하지 않는다.
+     */
+    private Result prepareUnderLock(long orderProductOptionNo, OrderLineState line) {
+        return tx.inTransaction(() -> {
+            Shipment locked = shipments.lock(orderProductOptionNo).orElse(null);
+            if (locked != null && locked.prepared()) {
+                return Result.REQUESTED;
+            }
+            // 3PL 등록 사이에 취소 신청이 들어왔을 수 있으므로 상품준비중 변경 직전에 다시 읽는다
+            OrderLineState latest = orders.findLine(orderProductOptionNo).orElse(line);
+            if (latest.orderStatus() == OrderStatus.PAY_DONE && !latest.hasClaim()) {
+                try {
+                    shopby.prepareProduct(List.of(orderProductOptionNo));
+                } catch (ShopbyClient.ApiException e) {
+                    if (e.status() != 400) {
+                        // 인증·권한·서버 오류 등: 처리했다고 표시하면 조용히 유실된다. 예외로 재전송 → DLQ에서 보이게 한다
+                        throw e;
+                    }
+                    // 400: 샵바이가 상태 변경을 거절했다(이미 결제완료가 아님 등, 오류 코드는 미확인).
+                    // 이전 호출 결과를 모르면, 그 호출이 이미 반영해서 거절된 것으로 본다.
+                    // 실제로 어긋났다면 대사가 잡는다 (ADR-0002)
+                    if (!(locked != null && locked.prepareOutcomeUnknown())) {
+                        // 처음 호출에서 거절됐다: 반복해도 같으므로 멈추고 사람이 보게 conflict로 남긴다
+                        conflicts.record(String.valueOf(orderProductOptionNo), CONFLICT_PREPARE_REJECTED, e.getMessage(),
+                                LocalDateTime.now(clock));
+                    }
+                }
+            }
+            shipments.markPrepared(orderProductOptionNo, LocalDateTime.now(clock));
+            return Result.REQUESTED;
         });
-        return Result.REQUESTED;
     }
 }

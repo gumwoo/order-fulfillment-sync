@@ -13,3 +13,5 @@
 | [0007](0007-rate-limit-retry-by-republish.md) | 전역 레이트 리미터와 429 재시도는 재발행으로 (0004 대체) | 채택 |
 | [0008](0008-tpl-transient-failure-retry.md) | 3PL 일시 장애는 재발행으로 다시 시도한다 (최대 20회) | 채택 |
 | [0009](0009-cancel-state-machine-rules.md) | 취소 처리 단계는 행 잠금 안에서 진행하고, 재시도 가능한 순서로 기록한다 | 채택 |
+| [0010](0010-prepare-product-under-row-lock.md) | 상품준비중 변경은 출고 행 잠금 안에서 한 번만 한다 | 채택 |
+| [0011](0011-invoice-sync-lost-response.md) | 송장 반영이 거절돼도 샵바이 상태가 이미 배송중이면 반영 완료로 본다 | 채택 |

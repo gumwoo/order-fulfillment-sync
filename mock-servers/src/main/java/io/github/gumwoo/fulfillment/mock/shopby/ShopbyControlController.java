@@ -126,6 +126,13 @@ public class ShopbyControlController {
         return ResponseEntity.noContent().build();
     }
 
+    /** 다음 송장 일괄 반영은 처리한 뒤 응답을 읽을 수 없게 돌려준다 */
+    @PostMapping("/faults/invoice-lose-response-once")
+    public ResponseEntity<Void> loseInvoiceResponseOnce() {
+        faults.loseInvoiceResponseOnce();
+        return ResponseEntity.noContent().build();
+    }
+
     /** 호출 제한 장애 주입. body: {next429, nextExhausted, limitPerSecond} */
     @PostMapping("/faults/rate-limit")
     public ResponseEntity<Void> rateLimitFaults(@RequestBody JsonNode body) {

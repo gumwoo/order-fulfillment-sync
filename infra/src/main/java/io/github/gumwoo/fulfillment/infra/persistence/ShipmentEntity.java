@@ -29,6 +29,9 @@ public class ShipmentEntity {
     private LocalDateTime registeredAt;
     private LocalDateTime preparedAt;
 
+    /** 상품준비중 변경 호출 결과를 모르게 된 시각 (타임아웃·5xx, ADR-0010) */
+    private LocalDateTime prepareOutcomeUnknownAt;
+
     @Column(length = 64)
     private String invoiceNo;
 
@@ -56,7 +59,7 @@ public class ShipmentEntity {
 
     public Shipment toDomain() {
         return new Shipment(orderProductOptionNo, deliveryNo, tplStatus, registeredAt != null, preparedAt != null,
-                invoiceNo, deliveryCompanyType);
+                invoiceNo, deliveryCompanyType, prepareOutcomeUnknownAt != null);
     }
 
     public void register(Long deliveryNo, Status status, LocalDateTime now) {
@@ -68,6 +71,13 @@ public class ShipmentEntity {
         }
         if (tplStatus == null) {
             tplStatus = status;
+        }
+        updatedAt = now;
+    }
+
+    public void prepareOutcomeUnknown(LocalDateTime now) {
+        if (prepareOutcomeUnknownAt == null) {
+            prepareOutcomeUnknownAt = now;
         }
         updatedAt = now;
     }

@@ -112,6 +112,10 @@ public class MockShopby {
         post("/_mock/shopby/faults/invoice-fail-once", shippingNos);
     }
 
+    public void loseInvoiceResponseOnce() {
+        post("/_mock/shopby/faults/invoice-lose-response-once", List.of());
+    }
+
     public JsonNode get(String path) {
         try {
             HttpResponse<String> r = http.send(HttpRequest.newBuilder(base.resolve(path)).GET().build(),

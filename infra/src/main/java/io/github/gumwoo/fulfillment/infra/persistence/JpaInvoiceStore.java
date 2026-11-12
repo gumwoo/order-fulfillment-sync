@@ -90,6 +90,16 @@ public class JpaInvoiceStore implements InvoiceStore, AlertStore {
     }
 
     @Override
+    public boolean alreadyApplied(long shippingNo, String invoiceNo) {
+        List<io.github.gumwoo.fulfillment.core.order.OrderLineState> deliveryLines = lines.findByDeliveryNo(shippingNo).stream()
+                .map(OrderLineStateEntity::toDomain)
+                .filter(l -> !io.github.gumwoo.fulfillment.core.order.ClaimStatus.isCancelDone(l.claimStatusType()))
+                .toList();
+        return !deliveryLines.isEmpty() && deliveryLines.stream()
+                .allMatch(l -> !l.orderStatus().isBeforeShipment() && java.util.Objects.equals(invoiceNo, l.invoiceNo()));
+    }
+
+    @Override
     public void markSynced(long shippingNo, LocalDateTime at) {
         shipments.findByDeliveryNo(shippingNo).forEach(s -> s.invoiceSynced(at));
     }

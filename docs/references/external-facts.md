@@ -124,3 +124,4 @@ https://workspace-help.nhn-commerce.com/contents/recommended/webhook
 
 - 실계정에서의 실제 응답 형태, 웹훅 지연 시간 분포
 - 실제 운영 환경의 3PL과 연동 방식
+- 파스토에 같은 주문옵션을 다시 등록할 때의 동작. mock은 기존 건을 돌려준다 (ADR-0010)

@@ -21,6 +21,11 @@ public class JpaShipmentStore implements ShipmentStore {
     }
 
     @Override
+    public Optional<Shipment> lock(long orderProductOptionNo) {
+        return shipments.lockById(orderProductOptionNo).map(ShipmentEntity::toDomain);
+    }
+
+    @Override
     public void markRegistered(long orderProductOptionNo, Long deliveryNo, Status status, LocalDateTime at) {
         ShipmentEntity e = row(orderProductOptionNo, at);
         e.register(deliveryNo, status, at);
@@ -31,6 +36,13 @@ public class JpaShipmentStore implements ShipmentStore {
     public void markPrepared(long orderProductOptionNo, LocalDateTime at) {
         ShipmentEntity e = row(orderProductOptionNo, at);
         e.prepared(at);
+        shipments.saveAndFlush(e);
+    }
+
+    @Override
+    public void markPrepareOutcomeUnknown(long orderProductOptionNo, LocalDateTime at) {
+        ShipmentEntity e = row(orderProductOptionNo, at);
+        e.prepareOutcomeUnknown(at);
         shipments.saveAndFlush(e);
     }
 

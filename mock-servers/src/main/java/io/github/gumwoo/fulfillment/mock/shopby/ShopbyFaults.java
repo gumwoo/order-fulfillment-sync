@@ -23,6 +23,8 @@ public class ShopbyFaults {
     /** 배송보류 호출마다 담긴 건수 */
     private final List<Integer> holdCalls = new ArrayList<>();
     private final Map<String, AtomicInteger> claimCalls = new ConcurrentHashMap<>();
+    /** 송장 일괄 반영을 처리한 뒤 응답을 읽을 수 없게 망가뜨릴 횟수 ("반영됐는데 응답을 잃음" 흉내) */
+    private final AtomicInteger loseInvoiceResponses = new AtomicInteger();
 
     public synchronized void reset() {
         invoiceFailOnce.clear();
@@ -30,6 +32,15 @@ public class ShopbyFaults {
         invoiceRequests.clear();
         holdCalls.clear();
         claimCalls.clear();
+        loseInvoiceResponses.set(0);
+    }
+
+    public void loseInvoiceResponseOnce() {
+        loseInvoiceResponses.incrementAndGet();
+    }
+
+    boolean consumeInvoiceResponseLoss() {
+        return loseInvoiceResponses.getAndUpdate(v -> Math.max(0, v - 1)) > 0;
     }
 
     public void failInvoiceOnce(Set<Long> shippingNos) {
