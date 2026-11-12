@@ -117,6 +117,12 @@ class FaultInjectionMeasurement {
         stack.awaitQueueDrained(Duration.ofSeconds(120));
         r.put("invoice_ms", System.currentTimeMillis() - t1);
         r.put("invoiceRequests", invoiceRequests);
+        // 송장 단계에서도 웹훅 30% 유실이 계속된다. 배송중 변경 웹훅(100건 단위)이 버려지면 그만큼 불일치가 남으므로
+        // 운영과 같이 재조회로 복구한 뒤의 값을 최종으로 본다. 복구 전 값도 함께 남긴다
+        ScenarioStack.passCurrentSecond();
+        r.put("mismatch_afterInvoice_beforeRecovery", reconcile.run().mismatches());
+        stack.bean(App.RECONCILER, StatusChangeRequeryJob.class).run();
+        stack.awaitQueueDrained(Duration.ofSeconds(120));
         ScenarioStack.passCurrentSecond();
         r.put("mismatch_final", reconcile.run().mismatches());
         r.put("shopbyDeliveryIng", StreamSupport.stream(mock.options().spliterator(), false)
@@ -210,8 +216,24 @@ class FaultInjectionMeasurement {
         JsonNode k6 = mapper.readTree(summary);
         long requests = k6.path("metrics").path("http_reqs").path("values").path("count").asLong();
         long expectedApplied = requests * 5;
-        await().atMost(Duration.ofMinutes(10)).pollInterval(Duration.ofSeconds(1)).until(() ->
-                stats.count("WEBHOOK", "APPLIED") >= expectedApplied);
+        // 30초마다 진행을 남기고, 시간을 넘겨도 어디까지 반영됐는지 기록한 뒤 실패시킨다
+        long deadline = k6End + Duration.ofMinutes(10).toMillis();
+        long nextLog = k6End;
+        boolean drained = false;
+        while (System.currentTimeMillis() < deadline) {
+            if (stats.count("WEBHOOK", "APPLIED") >= expectedApplied) {
+                drained = true;
+                break;
+            }
+            if (System.currentTimeMillis() >= nextLog) {
+                System.out.printf("[ingest] +%ds applied=%d/%d duplicate=%d stale=%d conflict=%d queue=%d%n",
+                        (System.currentTimeMillis() - k6End) / 1000, stats.count("WEBHOOK", "APPLIED"), expectedApplied,
+                        stats.count("WEBHOOK", "DUPLICATE"), stats.count("WEBHOOK", "STALE"), stats.count("WEBHOOK", "CONFLICT"),
+                        SqsProbe.approximateTotal(stack.sqs(), stack.queueUrl(ScenarioStack.QUEUE)));
+                nextLog += 30_000;
+            }
+            Thread.sleep(1000);
+        }
         long drainMs = System.currentTimeMillis() - k6End;
 
         Map<String, Object> r = new LinkedHashMap<>();
@@ -226,7 +248,9 @@ class FaultInjectionMeasurement {
         r.put("applied", stats.count("WEBHOOK", "APPLIED"));
         r.put("drainAfterLoad_ms", drainMs);
         r.put("dlq", SqsProbe.approximateTotal(stack.sqs(), stack.queueUrl(ScenarioStack.DLQ)));
+        r.put("drained", drained);
         write("ingest-load.json", r);
+        assertThat(drained).as("부하 종료 후 10분 안에 모두 반영").isTrue();
     }
 
     private void createOrders(List<Long> options) {
