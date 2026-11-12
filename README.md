@@ -7,6 +7,8 @@
 > 확인한 외부 동작과 mock이 가정한 동작은 [docs/references/external-facts.md](docs/references/external-facts.md)에 나눠 적었습니다.
 > 성능·복구 수치는 모두 이 mock과 로컬 PC 기준의 실측값입니다 ([docs/measurements.md](docs/measurements.md)).
 
+무엇을 왜 했고 어떤 문제를 풀었는지는 [docs/portfolio.md](docs/portfolio.md)에 정리했습니다.
+
 ## 풀려는 문제
 
 | 문제 | 원인 | 이 프로젝트의 처리 |
@@ -61,6 +63,10 @@ bash scripts/demo.sh                    # http://localhost:5173
 MOCK_PORT=28090 FRONT_PORT=5180 bash scripts/demo.sh   # 포트를 다른 프로그램이 쓰고 있을 때
 bash scripts/demo.sh stop               # 남은 앱 프로세스 정리
 ```
+
+![장애를 넣고 다시 맞춰지기까지](docs/images/demo-recovery.gif)
+
+쇼핑몰 요청 제한 30회, 주문 알림 30% 누락, 같은 알림 2번 더, 창고에 없는 옵션 10%를 걸고 주문 50건을 넣었습니다. 실제로는 85초 걸린 과정을 약 8배 빠르게 돌렸습니다. 로컬 PC와 mock 기준입니다.
 
 화면 문구는 운영자 말로 썼습니다. 원래 기술 용어는 마우스를 올리면 보입니다. 예를 들어 "자동 처리 실패"에 올리면 "DLQ"가 보입니다.
 

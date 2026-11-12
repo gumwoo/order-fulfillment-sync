@@ -19,7 +19,7 @@
 | 전체 설계와 시나리오 | [docs/design-docs/order-sync-design.md](docs/design-docs/order-sync-design.md) |
 | 왜 이렇게 정했는지 | [docs/adr/](docs/adr/README.md) |
 | 샵바이·SQS·파스토 공식 제약 | [docs/references/external-facts.md](docs/references/external-facts.md) |
-| 지금 진행 중인 계획과 수정 허용 범위 | [docs/exec-plans/active/](docs/exec-plans/active/0002-demo-frontend.md) (끝난 계획: [completed/](docs/exec-plans/completed/0001-mvp.md)) |
+| 지금 진행 중인 계획과 수정 허용 범위 | [docs/exec-plans/active/](docs/exec-plans/active/0003-portfolio-doc.md) (끝난 계획: [completed/](docs/exec-plans/completed/0002-demo-frontend.md)) |
 | 이 하네스를 왜 이렇게 만들었는지 | [docs/harness/harness-design.md](docs/harness/harness-design.md) |
 
 ## 작업 규칙
