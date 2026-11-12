@@ -25,4 +25,14 @@ public interface OrderSyncStore {
                        LocalDateTime at);
 
     void recordConflict(String targetKey, String reasonCode, String detail, LocalDateTime at);
+
+    /**
+     * 이미출고 성공을 우리 라인에 반영한다 (ADR-0012). 샵바이는 클레임을 철회하고 배송중으로 바꾼다 (external-facts.md).
+     * 라인의 현재 클레임이 이 claimNo일 때만 클레임을 지우고, 배송 전 상태면 배송중으로 올린다.
+     * 버전을 올리는 갱신이라 같은 라인을 동시에 반영하던 쪽은 낙관적 락으로 다시 읽는다.
+     *
+     * @return 반영했으면 true
+     */
+    boolean applyAlreadyDelivery(long orderProductOptionNo, long claimNo, String deliveryCompanyType, String invoiceNo,
+                                 LocalDateTime at);
 }

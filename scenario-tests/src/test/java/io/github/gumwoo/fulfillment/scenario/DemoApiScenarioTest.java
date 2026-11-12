@@ -82,6 +82,14 @@ class DemoApiScenarioTest {
         post(mockUrl("/_mock/demo/cancel"), "{\"count\":3,\"tplStatus\":\"RELEASED\"}");
         await().atMost(Duration.ofSeconds(60)).pollInterval(Duration.ofSeconds(2)).untilAsserted(() ->
                 assertThat(get(adminUrl("/admin/overview")).path("openRecalls").asLong()).isEqualTo(3));
+        // 취소가 철회된 3건도 샵바이와 같아져, 이후 대사에서 불일치가 0이 된다 (ADR-0012)
+        long recallDone = System.currentTimeMillis();
+        await().atMost(Duration.ofSeconds(60)).pollInterval(Duration.ofSeconds(2)).untilAsserted(() -> {
+            JsonNode last = get(adminUrl("/admin/overview")).path("lastReconciliation");
+            assertThat(java.time.LocalDateTime.parse(last.path("ranAt").asText())
+                    .atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()).isGreaterThan(recallDone);
+            assertThat(last.path("mismatches").asInt(-1)).isZero();
+        });
 
         JsonNode o = get(adminUrl("/admin/overview"));
         assertThat(o.path("dlq").path("visible").asInt()).isZero();

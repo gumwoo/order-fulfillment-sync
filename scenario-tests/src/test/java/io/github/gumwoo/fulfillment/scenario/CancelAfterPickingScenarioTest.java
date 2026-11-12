@@ -3,7 +3,11 @@ package io.github.gumwoo.fulfillment.scenario;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+import io.github.gumwoo.fulfillment.reconciler.job.ReconciliationJob;
+import io.github.gumwoo.fulfillment.reconciler.job.StatusChangeRequeryJob;
+import io.github.gumwoo.fulfillment.scenario.support.App;
 import io.github.gumwoo.fulfillment.scenario.support.FulfillmentFlow;
+import io.github.gumwoo.fulfillment.scenario.support.ScenarioStack;
 import io.github.gumwoo.fulfillment.scenario.support.MockShopby;
 import java.time.Duration;
 import java.util.List;
@@ -23,7 +27,7 @@ class CancelAfterPickingScenarioTest {
 
     @BeforeEach
     void setUp() {
-        flow = FulfillmentFlow.start(Set.of());
+        flow = FulfillmentFlow.start(Set.of(App.RECONCILER));
         mock = flow.mock();
         flow.createPaidOrderAndAwaitRequested(OPTION, 620_001);
     }
@@ -67,5 +71,37 @@ class CancelAfterPickingScenarioTest {
         assertThat(flow.stack().jdbc().queryForObject("select invoice_no from recall_task", String.class))
                 .isEqualTo("INV-52001");
         assertThat(flow.stack().jdbc().queryForObject("select count(*) from recall_task", Long.class)).isEqualTo(1);
+    }
+
+    /**
+     * F-16: 이미 배송중인 주문에 취소가 오면, 이미출고로 샵바이 클레임은 철회되지만 주문 상태는 그대로 배송중이다.
+     * 철회를 알리는 변경은 단계 시각이 같고 클레임이 비어 있어, 웹훅이든 재조회든 "오래된 변경"으로 버려졌다.
+     * 그래서 우리 쪽에만 클레임이 남고 대사가 계속 CLAIM_MISMATCH를 냈다.
+     */
+    @Test
+    void 배송중에_온_취소도_이미출고_뒤_우리_클레임이_지워지고_대사가_맞는다() {
+        mock.tplAdvance(OPTION, "RELEASED");
+        mock.tplInvoice(OPTION, "INV-52001");
+        mock.changeStatus(OPTION, "DELIVERY_ING", true);
+        await().atMost(Duration.ofSeconds(20)).untilAsserted(() ->
+                assertThat(flow.stack().jdbc().queryForObject(
+                        "select status from order_line_state where order_product_option_no = ?", String.class, OPTION))
+                        .isEqualTo("DELIVERY_ING"));
+
+        mock.changeClaim(OPTION, "CANCEL_REQUEST", CLAIM, true);
+
+        await().atMost(Duration.ofSeconds(30)).untilAsserted(() ->
+                assertThat(flow.cancelState(OPTION)).isEqualTo("RECALL_REQUIRED"));
+        assertThat(mock.option(OPTION).path("claimStatusType").isNull()
+                || mock.option(OPTION).path("claimStatusType").isMissingNode()).as("샵바이 클레임은 철회됨").isTrue();
+        // 재조회로 샵바이 상태를 한 번 더 받아도
+        ScenarioStack.passCurrentSecond();
+        flow.stack().bean(App.RECONCILER, StatusChangeRequeryJob.class).run();
+        await().atMost(Duration.ofSeconds(20)).untilAsserted(() ->
+                assertThat(flow.stack().jdbc().queryForObject(
+                        "select claim_status from order_line_state where order_product_option_no = ?", String.class, OPTION))
+                        .as("우리 라인의 클레임도 지워진다").isNull());
+        ScenarioStack.passCurrentSecond();
+        assertThat(flow.stack().bean(App.RECONCILER, ReconciliationJob.class).run().mismatches()).isZero();
     }
 }

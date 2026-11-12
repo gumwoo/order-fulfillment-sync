@@ -57,6 +57,20 @@ public class JpaOrderSyncStore implements OrderSyncStore {
     }
 
     @Override
+    public boolean applyAlreadyDelivery(long orderProductOptionNo, long claimNo, String deliveryCompanyType,
+                                        String invoiceNo, LocalDateTime at) {
+        String before = lines.findById(orderProductOptionNo).map(l -> l.getStatus().name()).orElse(null);
+        if (lines.applyAlreadyDelivery(orderProductOptionNo, claimNo, deliveryCompanyType, invoiceNo, at) == 0) {
+            return false;
+        }
+        String after = io.github.gumwoo.fulfillment.core.order.OrderStatus.valueOf(before).isBeforeShipment()
+                ? io.github.gumwoo.fulfillment.core.order.OrderStatus.DELIVERY_ING.name() : before;
+        history.save(new StatusHistoryEntity(orderProductOptionNo, before, after, null, "ALREADY_DELIVERY",
+                "already-delivery:" + claimNo, at));
+        return true;
+    }
+
+    @Override
     public void recordConflict(String targetKey, String reasonCode, String detail, LocalDateTime at) {
         conflicts.save(new ConflictEntity(targetKey, reasonCode, detail, at));
     }

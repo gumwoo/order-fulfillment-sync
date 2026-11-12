@@ -130,9 +130,13 @@ public class CancelService {
             }
             case RECALL_PENDING -> {
                 TplOrder order = tpl.find(optionNo).orElse(null);
+                String company = order == null ? null : order.deliveryCompanyType();
+                String invoice = order == null ? null : order.invoiceNo();
                 try {
-                    shopby.alreadyDelivery(claimNo, order == null ? null : order.deliveryCompanyType(),
-                            order == null ? null : order.invoiceNo(), LocalDate.now(clock));
+                    shopby.alreadyDelivery(claimNo, company, invoice, LocalDate.now(clock));
+                    // 샵바이는 클레임을 철회하고 배송중으로 바꿨다. 이미 배송중이던 주문은 단계 시각이 그대로라
+                    // 그 변경이 웹훅·재조회로 와도 "오래된 변경"으로 버려지므로, 우리가 한 호출의 결과를 직접 반영한다 (ADR-0012)
+                    orders.applyAlreadyDelivery(optionNo, claimNo, company, invoice, now());
                 } catch (ShopbyClient.ApiException e) {
                     if (e.status() != 400) {
                         throw e;

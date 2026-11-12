@@ -92,6 +92,12 @@ bash scripts/demo.sh stop               # 남은 앱 프로세스 정리
 |---|---|
 | ![장애 테스트](docs/images/demo-scenario-panel.png) | ![창고 등록 실패](docs/images/demo-admin-unlinked.png) |
 
+주문 알림 누락에 이어 "출고 뒤 고객 취소"까지 넣어도 다시 맞춰집니다.
+- 이미 배송중인 주문 3건이 취소되면 이미출고로 처리합니다.
+- 우리 쪽 취소 정보도 지우고, 회수 안내 3건만 사람에게 남깁니다 ([ADR-0012](docs/adr/0012-apply-already-delivery-result.md)).
+
+![출고 뒤 취소까지](docs/images/demo-after-cancel.png)
+
 창고 옵션 설정을 고친 뒤 5건을 창고에 다시 등록했습니다. 1건은 직접 해결했고, 4건은 자동 재시도가 먼저 끝내 "이미 해결됨"으로 나왔습니다 ([캡처](docs/images/demo-admin-reprocessed.png)).
 
 화면 생김새를 정한 근거는 [docs/design-docs/demo-ui-references.md](docs/design-docs/demo-ui-references.md)에 있습니다. Tremor 대시보드 템플릿, Vercel Observability, Anthropic frontend-design 스킬을 참고했습니다.
